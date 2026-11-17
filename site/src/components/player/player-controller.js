@@ -1,4 +1,5 @@
 import { GRABBABLE_SELECTOR } from "../../config/constants.js";
+import { LASER_REACH } from "../../config/grab.js";
 
 const LOCOMOTION_COMPONENT = Object.freeze({
   move: "thumbstick-movement",
@@ -11,7 +12,7 @@ AFRAME.registerComponent("player-controller", {
   schema: {
     hand: { default: "left", oneOf: ["left", "right"] },
     locomotion: { default: "none", oneOf: ["move", "turn", "none"] },
-    laserLength: { default: 3 },
+    laserLength: { default: LASER_REACH },
   },
 
   init() {

@@ -36,6 +36,8 @@ AFRAME.registerComponent("physics-body", {
     this.worldPosition = new THREE.Vector3();
     this.worldQuaternion = new THREE.Quaternion();
     this.wasHeld = false;
+    // Encaixada no suporte: ignora impulsos até ser pega de novo.
+    this.snapped = false;
     this.landed = false;
     this.onCollide = (event) => this.handleCollision(event);
 
@@ -98,6 +100,9 @@ AFRAME.registerComponent("physics-body", {
 
   /** Arremesso do computador: impulso extra aplicado na soltura. */
   addVelocity(vector) {
+    if (this.snapped) {
+      return;
+    }
     if (this.wasHeld) {
       this.pendingImpulse.add(vector);
       return;
@@ -125,6 +130,21 @@ AFRAME.registerComponent("physics-body", {
     this.landed = false;
     this.body.linearDamping = FLYING_LINEAR_DAMPING;
     this.body.angularDamping = FLYING_ANGULAR_DAMPING;
+  },
+
+  /** Põe a bola parada em `position` (mundo), em pé; usada no encaixe. */
+  placeAt(position) {
+    this.el.object3D.position.copy(position);
+    this.el.object3D.quaternion.copy(this.startQuaternion);
+    this.wasHeld = false;
+    this.snapped = true;
+    this.pendingImpulse.set(0, 0, 0);
+    this.body.type = CANNON.Body.DYNAMIC;
+    this.body.collisionResponse = true;
+    this.syncBodyToEntity();
+    this.stop();
+    this.takeOff();
+    this.body.sleep();
   },
 
   reset() {
@@ -163,6 +183,7 @@ AFRAME.registerComponent("physics-body", {
       const instant = this.worldPosition.clone().sub(this.lastPosition).divideScalar(dt);
       this.heldVelocity.lerp(instant, 0.5);
     } else {
+      this.snapped = false;
       this.heldVelocity.set(0, 0, 0);
       this.body.type = CANNON.Body.KINEMATIC;
       this.body.collisionResponse = false;

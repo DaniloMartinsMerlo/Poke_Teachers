@@ -108,6 +108,45 @@ async function run() {
   for (let i = 0; i < 200; i++) { await frame(); if (i === 60 || i === 199) zAt.push(+body.body.position.z.toFixed(2)); }
   out.landed = body.landed;
   out.rollAfterLandingM = +Math.abs(zAt[1] - zAt[0]).toFixed(2);
+
+  // Carretilha: controle segura a bola e o analógico para frente afasta.
+  const reelBall = balls[3];
+  const rb = reelBall.components["physics-body"];
+  rb.reset(); await frame();
+  tc.controllers = [{ handedness: "right", hand: null, profiles: ["oculus-touch-v3"] }];
+  mode.refresh();
+  rig.object3D.updateMatrixWorld(true);
+  const rbWorld = reelBall.object3D.getWorldPosition(new THREE.Vector3());
+  rightCtrl.object3D.position.copy(rbWorld.clone().applyMatrix4(rig.object3D.matrixWorld.clone().invert())); await frame();
+  rightCtrl.emit("triggerdown");
+  out.reelGrabbed = reelBall.hasAttribute("data-held");
+  const d0 = reelBall.object3D.position.length();
+  const rigBefore = rig.object3D.position.clone();
+  rightCtrl.emit("thumbstickmoved", { x: 0, y: -1 });
+  for (let i = 0; i < 30; i++) await frame();
+  out.reelPushedM = +(reelBall.object3D.position.length() - d0).toFixed(2);
+  out.rigStillWhileReeling = rig.object3D.position.distanceTo(rigBefore) < 1e-6;
+  rightCtrl.emit("thumbstickmoved", { x: 0, y: 1 });
+  for (let i = 0; i < 60; i++) await frame();
+  out.reelPulledToMin = +reelBall.object3D.position.length().toFixed(2);
+  rightCtrl.emit("thumbstickmoved", { x: 0, y: 0 });
+
+  // Encaixe: soltar perto do encaixe (livre) trava a bola nele.
+  const slot = scene.querySelector("[ball-rack]").components["ball-rack"].slots[0];
+  const snapBall = balls[1];
+  rightCtrl.emit("triggerup");
+  tc.controllers = [{ handedness: "left", hand: {}, profiles: ["generic-hand"] }];
+  mode.refresh();
+  // balls[0] ocupa o encaixe 0: tira ela de lá antes.
+  balls[0].components["physics-body"].body.position.set(3, 0.1, 0); await frame();
+  leftHand.emit("pinchstarted", { position: snapBall.object3D.getWorldPosition(new THREE.Vector3()).applyMatrix4(rigInv) });
+  out.snapGrabbed = snapBall.hasAttribute("data-held");
+  leftHand.emit("pinchmoved", { position: slot.clone().add(new THREE.Vector3(0.12, 0.1, 0.05)).applyMatrix4(rigInv) });
+  await frame();
+  out.slotHighlighted = scene.querySelector("[ball-rack]").components["ball-rack"].markers[0].dataset.active === "true";
+  leftHand.emit("pinchended", {});
+  for (let i = 0; i < 60; i++) await frame();
+  out.snappedOffsetM = +snapBall.object3D.position.distanceTo(slot).toFixed(3);
   out.errors = errors;
   report(out);
 }

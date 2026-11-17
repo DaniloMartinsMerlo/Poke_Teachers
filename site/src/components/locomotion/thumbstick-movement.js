@@ -1,4 +1,5 @@
 import { frameSeconds } from "../../utils/time.js";
+import { isControllerHolding } from "../interaction/grab-state.js";
 import { findPlayerRig } from "./player-rig.js";
 
 // Analógico: anda para onde você está olhando.
@@ -25,7 +26,8 @@ AFRAME.registerComponent("thumbstick-movement", {
   tick(time, delta) {
     const camera = this.el.sceneEl.camera;
     const rig = findPlayerRig(this.el);
-    if (!camera || !rig || !this.inputMode.usesController(this.data.hand)) {
+    if (!camera || !rig || !this.inputMode.usesController(this.data.hand)
+      || isControllerHolding(this.el)) {
       return;
     }
     const { x, y } = this.axis;

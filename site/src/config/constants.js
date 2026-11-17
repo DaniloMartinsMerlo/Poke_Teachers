@@ -25,6 +25,8 @@ export const INPUT_MODE = Object.freeze({
 export const EVENTS = Object.freeze({
   INPUT_MODE_CHANGED: "inputmodechanged",
   GAME_RESET: "gamereset",
+  // Um objeto acabou de ser solto (sobe da bola até a cena).
+  GRAB_RELEASED: "grabreleased",
 });
 
 // Quadros muito longos (aba em segundo plano) não podem gerar saltos.

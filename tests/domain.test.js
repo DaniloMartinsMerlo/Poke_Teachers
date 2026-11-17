@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveCircleAgainstRects, overlapsHeight } from "../site/src/domain/collision.js";
 import { findNearest } from "../site/src/domain/nearest.js";
+import { reelDistance, thumbstickReel } from "../site/src/domain/reel.js";
 
 // Mureta direita da arena: lado de dentro em x = 7.
 const rightWall = { minX: 7, maxX: 7.3, minY: 0, maxY: 0.8, minZ: -10.3, maxZ: 10.3 };
@@ -59,4 +60,16 @@ test("pouso: contato vindo de baixo conta, batida de lado não", () => {
   assert.equal(isLandingNormal({ x: 0, y: 1, z: 0 }, 0.7), true);
   assert.equal(isLandingNormal({ x: 0, y: -0.9, z: 0.4 }, 0.7), true);
   assert.equal(isLandingNormal({ x: 1, y: 0.1, z: 0 }, 0.7), false);
+});
+
+test("carretilha respeita os limites de distância", () => {
+  assert.equal(reelDistance(5, -1, 0.15, 15), 4);
+  assert.equal(reelDistance(0.3, -1, 0.15, 15), 0.15);
+  assert.equal(reelDistance(14.5, 2, 0.15, 15), 15);
+});
+
+test("analógico para frente afasta, para trás puxa, zona morta ignora", () => {
+  assert.ok(thumbstickReel(-1, 4, 0.1, 0.15) > 0);
+  assert.ok(thumbstickReel(1, 4, 0.1, 0.15) < 0);
+  assert.equal(thumbstickReel(0.1, 4, 0.1, 0.15), 0);
 });

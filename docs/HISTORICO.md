@@ -107,6 +107,14 @@ professores.
   resetar volta ao normal. Quique contra chão/madeira reduzido.
 - **Arremesso mais forte:** `throwBoost` 0,7 → 1, limite 8 → 12 m/s;
   mouse 2,5 → 4,5 m/s (+1,2 para cima).
+- **Puxar a bola de longe:** laser alcança 15 m (`config/grab.js`).
+  Segurando com o controle, o analógico daquela mão vira carretilha
+  (frente afasta, trás puxa; 0,15–15 m) e a locomoção dessa mão pausa.
+  No computador, a rodinha do mouse faz o mesmo.
+- **Encaixes no suporte:** marcas no tampo em cada posição de bola.
+  Soltar a bola a menos de 30 cm de um encaixe livre a trava ali, em pé e
+  parada; a marca fica amarela enquanto a bola segurada está ao alcance.
+  Os pegadores emitem `grabreleased` (sobe até a cena) ao soltar.
 
 ### Decisões e motivos
 - Cartão da prévia é filho da cena, não da bola: a bola tem escala 0,01 e

@@ -1,4 +1,5 @@
 import { frameSeconds } from "../../utils/time.js";
+import { isControllerHolding } from "../interaction/grab-state.js";
 import { findPlayerRig } from "./player-rig.js";
 
 // Analógico: gira a visão de forma contínua; quanto mais inclinado, mais
@@ -25,7 +26,8 @@ AFRAME.registerComponent("thumbstick-turn", {
 
   tick(time, delta) {
     const rig = findPlayerRig(this.el);
-    if (!rig || !this.inputMode.usesController(this.data.hand)) {
+    if (!rig || !this.inputMode.usesController(this.data.hand)
+      || isControllerHolding(this.el)) {
       return;
     }
     const degrees = this.data.snap ? this.snapDegrees() : this.smoothDegrees(delta);

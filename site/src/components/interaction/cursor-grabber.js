@@ -1,17 +1,22 @@
 import { MOUSE_CURSOR_ID } from "../../config/constants.js";
-import { clearHeld, isHeld, markHeld } from "./grab-state.js";
+import { HOLD_MAX_DISTANCE, HOLD_MIN_DISTANCE, WHEEL_METERS_PER_UNIT } from "../../config/grab.js";
+import { reelDistance } from "../../domain/reel.js";
+import { clearHeld, isHeld, markHeld, moveAlongHoldLine } from "./grab-state.js";
 
 const THROW_SPEED = 4.5;
 const THROW_LIFT = new THREE.Vector3(0, 1.2, 0);
 
 // Computador: 1º clique pega (a bola vai junto com a câmera), 2º clique
 // arremessa para frente. Só responde ao cursor do mouse, para não brigar
-// com o laser dos controles.
+// com o laser dos controles. Segurando, a rodinha aproxima (para baixo)
+// ou afasta (para cima) a bola.
 AFRAME.registerComponent("cursor-grabber", {
   init() {
     this.isHolding = false;
     this.onClick = (event) => this.toggle(event);
+    this.onWheel = (event) => this.reel(event);
     this.el.addEventListener("click", this.onClick);
+    window.addEventListener("wheel", this.onWheel, { passive: true });
   },
 
   toggle(event) {
@@ -36,6 +41,16 @@ AFRAME.registerComponent("cursor-grabber", {
     this.isHolding = true;
   },
 
+  reel(event) {
+    if (!this.isHolding) {
+      return;
+    }
+    const object = this.el.object3D;
+    moveAlongHoldLine(object, reelDistance(
+      object.position.length(), -event.deltaY * WHEEL_METERS_PER_UNIT,
+      HOLD_MIN_DISTANCE, HOLD_MAX_DISTANCE));
+  },
+
   throw() {
     this.el.sceneEl.object3D.attach(this.el.object3D);
     clearHeld(this.el);
@@ -52,5 +67,6 @@ AFRAME.registerComponent("cursor-grabber", {
 
   remove() {
     this.el.removeEventListener("click", this.onClick);
+    window.removeEventListener("wheel", this.onWheel);
   },
 });

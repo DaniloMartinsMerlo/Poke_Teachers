@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pokébolas em realidade virtual</title>
+    <script src="https://aframe.io/releases/1.8.0/aframe.min.js"></script>
+    <!-- Motor de física (corpos rígidos): define a variável global CANNON. -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <!-- Sistemas e componentes do jogo (ver src/main.js). -->
+    <script type="module" src="src/main.js"></script>
+  </head>
+  <body>
+    <a-scene
+      background="color: #b9e5ff"
+      vr-mode-ui="enabled: true"
+      renderer="colorManagement: true"
+      keyboard-reset>
+      <a-assets>
+        <a-asset-item id="pokeball-model" src="assets/models/pokeball-pack-brynleabuilds/pokeball.glb"></a-asset-item>
+        <a-asset-item id="greatball-model" src="assets/models/pokeball-pack-brynleabuilds/greatball.glb"></a-asset-item>
+        <a-asset-item id="masterball-model" src="assets/models/pokeball-pack-brynleabuilds/masterball.glb"></a-asset-item>
+        <a-asset-item id="cesta-model" src="assets/models/cesta.glb"></a-asset-item>
+      </a-assets>
+
+      <a-entity light="type: ambient; color: #ffffff; intensity: 1.5"></a-entity>
+      <a-entity light="type: directional; color: #ffffff; intensity: 2" position="-3 5 4"></a-entity>
+
+      <!-- ARENA: medidas e cores em src/config/arena.js -->
+      <a-entity id="arena">
+        <a-entity arena-field></a-entity>
+        <a-entity arena-walls></a-entity>
+        <a-entity arena-bleachers="side: left"></a-entity>
+        <a-entity arena-bleachers="side: right"></a-entity>
+        <a-entity arena-scoreboard="title: ARENA POKEMON" position="0 0 -11.2"></a-entity>
+        <a-entity arena-light-towers></a-entity>
+      </a-entity>
+
+      <!-- Cesta de basquete (provisória), no meio do campo, de frente
+           para o jogador. -->
+      <a-entity basketball-hoop position="0 0.3 0.7"></a-entity>
+
+      <!-- Suporte das pokébolas ao lado direito do jogador (e não na
+           frente), com as bolas enfileiradas ao longo do corpo. -->
+      <a-entity ball-rack position="0.6 0 7" rotation="0 90 0"></a-entity>
+
+      <!-- JOGADOR
+           Mãos rastreadas: pinça pega e solta.
+           Controles: gatilho/grip pegam, B/Y resetam, analógico esquerdo
+           anda e o direito gira.
+           Computador: WASD + mouse, Espaço/Shift sobem/descem, clique pega
+           e arremessa, R reseta. -->
+      <a-entity
+        id="camera-rig"
+        position="0 0 7"
+        player-rig
+        player-collision="radius: 0.25"
+        wasd-controls="acceleration: 20"
+        vertical-controls>
+        <a-entity camera position="0 1.6 0" look-controls>
+          <a-cursor id="mouse-cursor" raycaster="objects: .grabbable" fuse="false" color="#ffffff"></a-cursor>
+        </a-entity>
+        <a-entity player-hand="hand: left"></a-entity>
+        <a-entity player-hand="hand: right"></a-entity>
+        <a-entity player-controller="hand: left; locomotion: move"></a-entity>
+        <a-entity player-controller="hand: right; locomotion: turn"></a-entity>
+      </a-entity>
+
+      <a-sky color="#b9e5ff"></a-sky>
+    </a-scene>
+  </body>
+</html>

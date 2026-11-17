@@ -1,0 +1,9 @@
+{
+  "name": "pokemon-vr",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:e2e": "bash tests/e2e/run.sh"
+  }
+}

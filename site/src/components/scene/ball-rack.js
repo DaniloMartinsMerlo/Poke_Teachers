@@ -1,3 +1,4 @@
+import { TRAINER_BOX_Z } from "../../config/arena.js";
 import { EVENTS, GRABBABLE_CLASS, GRABBABLE_SELECTOR, HELD_ATTRIBUTE } from "../../config/constants.js";
 import { SLOT_OCCUPIED_DISTANCE, SLOT_SNAP_DISTANCE } from "../../config/grab.js";
 import { findNearest } from "../../domain/nearest.js";
@@ -9,7 +10,8 @@ const SLOT_ACTIVE_COLOR = "#ffd23f";
 // Suporte das pokébolas. Monta o móvel e coloca uma pokébola de cada
 // modelo em fila sobre o tampo (eixo x local do suporte). Se "pokemon"
 // tiver um nome na mesma posição, a bola guarda aquele professor e
-// mostra a prévia dele ao ser apontada.
+// mostra a prévia dele ao ser apontada. Toda bola solta um pokémon
+// genérico ao cair no chão.
 //
 // As pokébolas são filhas da cena, e não do suporte: os pegadores e a
 // física trabalham com objetos soltos no mundo.
@@ -82,6 +84,9 @@ AFRAME.registerComponent("ball-rack", {
   spawnBalls() {
     const { models, pokemon, height, ballLift, ballScale } = this.data;
     this.el.object3D.updateMatrixWorld(true);
+    // O pokémon solto olha para o box do treinador do outro lado do campo.
+    const rackZ = this.el.object3D.getWorldPosition(new THREE.Vector3()).z;
+    const facing = { x: 0, y: 0, z: rackZ >= 0 ? -TRAINER_BOX_Z : TRAINER_BOX_Z };
 
     models.forEach((model, index) => {
       const position = this.el.object3D.localToWorld(
@@ -98,6 +103,7 @@ AFRAME.registerComponent("ball-rack", {
       if (pokemon[index]) {
         ball.setAttribute("pokemon-preview", { name: pokemon[index] });
       }
+      ball.setAttribute("pokemon-release", { name: pokemon[index] || model, facing });
       this.el.sceneEl.appendChild(ball);
     });
   },

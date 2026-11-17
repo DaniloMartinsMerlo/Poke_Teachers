@@ -54,12 +54,27 @@ test("findNearest respeita a distância máxima", () => {
   assert.equal(findNearest([0.5], origin, 0.3, (p) => p), null);
 });
 
-import { isLandingNormal } from "../site/src/domain/landing.js";
+import { isLandingNormal, pickByName, releasesPokemon } from "../site/src/domain/landing.js";
 
 test("pouso: contato vindo de baixo conta, batida de lado não", () => {
   assert.equal(isLandingNormal({ x: 0, y: 1, z: 0 }, 0.7), true);
   assert.equal(isLandingNormal({ x: 0, y: -0.9, z: 0.4 }, 0.7), true);
   assert.equal(isLandingNormal({ x: 1, y: 0.1, z: 0 }, 0.7), false);
+});
+
+test("pokémon só sai quando a bola pousa na superfície de soltura", () => {
+  assert.equal(releasesPokemon("ground", "ground"), true);
+  assert.equal(releasesPokemon("wood", "ground"), false);
+  assert.equal(releasesPokemon(null, "ground"), false);
+});
+
+test("mesmo nome escolhe sempre o mesmo visual", () => {
+  const options = ["a", "b", "c", "d", "e"];
+  assert.equal(pickByName("Fabi", options), pickByName("Fabi", options));
+  assert.ok(options.includes(pickByName("", options)));
+  const teachers = ["Fabi", "Murilo", "Rodinha"];
+  const picked = new Set(teachers.map((n) => pickByName(n, options, teachers)));
+  assert.equal(picked.size, 3);
 });
 
 test("carretilha respeita os limites de distância", () => {

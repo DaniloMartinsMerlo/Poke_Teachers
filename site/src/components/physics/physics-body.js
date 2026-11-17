@@ -10,6 +10,7 @@ import {
   SLEEP_SPEED_LIMIT,
   SLEEP_TIME_LIMIT,
 } from "../../config/physics.js";
+import { EVENTS } from "../../config/constants.js";
 import { isLandingNormal } from "../../domain/landing.js";
 import { isHeld } from "../interaction/grab-state.js";
 import { whenSceneLoaded } from "../../utils/entity.js";
@@ -39,6 +40,8 @@ AFRAME.registerComponent("physics-body", {
     // Encaixada no suporte: ignora impulsos até ser pega de novo.
     this.snapped = false;
     this.landed = false;
+    // Material da última superfície em que pousou (null = no ar/na mão).
+    this.landedOn = null;
     this.onCollide = (event) => this.handleCollision(event);
 
     this.startPosition = this.el.object3D.position.clone();
@@ -111,11 +114,24 @@ AFRAME.registerComponent("physics-body", {
     this.body.wakeUp();
   },
 
-  // Caiu em cima de algo: corta o rolamento para a bola parar ali.
+  // Caiu em cima de algo: corta o rolamento para a bola parar ali e
+  // avisa em que superfície pousou (o primeiro pouso pode ser no tampo e
+  // a bola rolar depois para o chão).
   handleCollision(event) {
-    if (this.landed || isHeld(this.el) || !isLandingNormal(event.contact.ni, LANDING_MIN_UP)) {
+    if (isHeld(this.el) || !isLandingNormal(event.contact.ni, LANDING_MIN_UP)) {
       return;
     }
+    if (!this.landed) {
+      this.land();
+    }
+    const surface = event.body.material?.name ?? null;
+    if (surface !== this.landedOn) {
+      this.landedOn = surface;
+      this.el.emit(EVENTS.BALL_LANDED, { surface }, false);
+    }
+  },
+
+  land() {
     this.landed = true;
     const { velocity, angularVelocity } = this.body;
     velocity.x *= LANDING_KEEP;
@@ -128,6 +144,10 @@ AFRAME.registerComponent("physics-body", {
   // Pegou ou resetou: volta a voar livre até o próximo pouso.
   takeOff() {
     this.landed = false;
+    if (this.landedOn !== null) {
+      this.landedOn = null;
+      this.el.emit(EVENTS.BALL_TAKEOFF, null, false);
+    }
     this.body.linearDamping = FLYING_LINEAR_DAMPING;
     this.body.angularDamping = FLYING_ANGULAR_DAMPING;
   },

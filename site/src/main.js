@@ -20,6 +20,7 @@ import "./components/interaction/controller-grabber.js";
 import "./components/interaction/cursor-grabber.js";
 import "./components/interaction/controller-input-gate.js";
 import "./components/interaction/pokemon-preview.js";
+import "./components/interaction/pokemon-release.js";
 
 import "./components/locomotion/player-rig.js";
 import "./components/locomotion/player-collision.js";
@@ -39,3 +40,4 @@ import "./components/scene/arena-bleachers.js";
 import "./components/scene/arena-scoreboard.js";
 import "./components/scene/arena-light-towers.js";
 import "./components/scene/ball-rack.js";
+import "./components/scene/generic-pokemon.js";

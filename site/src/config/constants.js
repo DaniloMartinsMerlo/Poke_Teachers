@@ -25,6 +25,10 @@ export const INPUT_MODE = Object.freeze({
 export const EVENTS = Object.freeze({
   INPUT_MODE_CHANGED: "inputmodechanged",
   GAME_RESET: "gamereset",
+  // Pokébola pousou em uma superfície (detail.surface = nome do material).
+  BALL_LANDED: "balllanded",
+  // Pokébola saiu do chão: foi pega ou resetada.
+  BALL_TAKEOFF: "balltakeoff",
   // Um objeto acabou de ser solto (sobe da bola até a cena).
   GRAB_RELEASED: "grabreleased",
 });

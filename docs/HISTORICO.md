@@ -115,6 +115,14 @@ professores.
   Soltar a bola a menos de 30 cm de um encaixe livre a trava ali, em pé e
   parada; a marca fica amarela enquanto a bola segurada está ao alcance.
   Os pegadores emitem `grabreleased` (sobe até a cena) ao soltar.
+- **Pokémon sai da bola:** componente `pokemon-release`. Quando a bola
+  pousa no chão (material `ground`; o tampo do suporte não conta), um
+  pokémon genérico (`generic-pokemon`, criatura original feita de
+  primitivas) aparece 35 cm à frente dela, virado para o box do
+  adversário (lado oposto ao suporte de onde a bola veio), com
+  "pop" e clarão. Volta para a bola ao pegar ou resetar. Cada professor
+  tem um visual fixo (`config/pokemon.js`). `physics-body` agora emite
+  `balllanded` (com a superfície) e `balltakeoff`.
 
 ### Decisões e motivos
 - Cartão da prévia é filho da cena, não da bola: a bola tem escala 0,01 e
@@ -122,6 +130,8 @@ professores.
 - Prévia via eventos `raycaster-intersected(-cleared)`: vale para mouse e
   laser sem código específico de cada um. Batida de lado (parede) não
   conta como pouso, para a bola não "grudar" na parede.
+- Pokémons feitos em primitivas por enquanto (sem MCP do Blender na
+  sessão); trocar por `.glb` exportado do Blender quando houver modelos.
 - Adversário com os mesmos 3 professores (ordem invertida) porque só há
   3 imagens por enquanto.
 

@@ -108,6 +108,15 @@ async function run() {
   for (let i = 0; i < 200; i++) { await frame(); if (i === 60 || i === 199) zAt.push(+body.body.position.z.toFixed(2)); }
   out.landed = body.landed;
   out.rollAfterLandingM = +Math.abs(zAt[1] - zAt[0]).toFixed(2);
+  // Pokémon: sai ao cair no chão, volta ao resetar.
+  out.pokemonReleased = document.querySelectorAll(".released-pokemon").length;
+  out.pokemonOnFloorY = +(document.querySelector(".released-pokemon")?.object3D.position.y ?? -1).toFixed(2);
+  // Bola do jogador (z > 0): pokémon de costas para ele, olhando para -z.
+  const released = document.querySelector(".released-pokemon")?.object3D;
+  out.pokemonFacesOpponent = released ? new THREE.Vector3(0, 0, 1).applyQuaternion(released.quaternion).z < -0.9 : false;
+  out.ballsOnRackReleasedNothing = document.querySelectorAll(".released-pokemon").length === 1;
+  body.reset(); await frame();
+  out.pokemonRecalled = document.querySelectorAll(".released-pokemon").length === 0;
 
   // Carretilha: controle segura a bola e o analógico para frente afasta.
   const reelBall = balls[3];

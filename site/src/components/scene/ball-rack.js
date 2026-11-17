@@ -2,13 +2,16 @@ import { GRABBABLE_CLASS } from "../../config/constants.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
 
 // Suporte das pokébolas. Monta o móvel e coloca uma pokébola de cada
-// modelo em fila sobre o tampo (eixo x local do suporte).
+// modelo em fila sobre o tampo (eixo x local do suporte). Se "pokemon"
+// tiver um nome na mesma posição, a bola guarda aquele professor e
+// mostra a prévia dele ao ser apontada.
 //
 // As pokébolas são filhas da cena, e não do suporte: os pegadores e a
 // física trabalham com objetos soltos no mundo.
 AFRAME.registerComponent("ball-rack", {
   schema: {
     models: { type: "array", default: ["#pokeball-model", "#greatball-model", "#masterball-model"] },
+    pokemon: { type: "array", default: [] },
     width: { default: 0.9 },
     height: { default: 0.9 },
     depth: { default: 0.35 },
@@ -42,21 +45,25 @@ AFRAME.registerComponent("ball-rack", {
   },
 
   spawnBalls() {
-    const { models, spacing, height, ballLift, ballScale } = this.data;
+    const { models, pokemon, spacing, height, ballLift, ballScale } = this.data;
     const firstX = -spacing * (models.length - 1) / 2;
     this.el.object3D.updateMatrixWorld(true);
 
     models.forEach((model, index) => {
       const position = this.el.object3D.localToWorld(
         new THREE.Vector3(firstX + index * spacing, height + ballLift, 0));
-      this.el.sceneEl.appendChild(createEntity("a-entity", {
+      const ball = createEntity("a-entity", {
         class: GRABBABLE_CLASS,
         position: vec3(position.x, position.y, position.z),
         scale: vec3(ballScale, ballScale, ballScale),
         "gltf-model": model,
         "physics-body": "",
         "cursor-grabber": "",
-      }));
+      });
+      if (pokemon[index]) {
+        ball.setAttribute("pokemon-preview", { name: pokemon[index] });
+      }
+      this.el.sceneEl.appendChild(ball);
     });
   },
 });

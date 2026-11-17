@@ -1,4 +1,16 @@
-import { FALL_RESET_HEIGHT, MAX_THROW_SPEED, SLEEP_SPEED_LIMIT, SLEEP_TIME_LIMIT } from "../../config/physics.js";
+import {
+  FALL_RESET_HEIGHT,
+  FLYING_ANGULAR_DAMPING,
+  FLYING_LINEAR_DAMPING,
+  LANDED_ANGULAR_DAMPING,
+  LANDED_LINEAR_DAMPING,
+  LANDING_KEEP,
+  LANDING_MIN_UP,
+  MAX_THROW_SPEED,
+  SLEEP_SPEED_LIMIT,
+  SLEEP_TIME_LIMIT,
+} from "../../config/physics.js";
+import { isLandingNormal } from "../../domain/landing.js";
 import { isHeld } from "../interaction/grab-state.js";
 import { whenSceneLoaded } from "../../utils/entity.js";
 
@@ -13,7 +25,7 @@ AFRAME.registerComponent("physics-body", {
     radius: { default: 0.088 },
     material: { default: "ball" },
     // Fração da velocidade da mão aplicada ao soltar.
-    throwBoost: { default: 0.7 },
+    throwBoost: { default: 1 },
   },
 
   init() {
@@ -24,11 +36,16 @@ AFRAME.registerComponent("physics-body", {
     this.worldPosition = new THREE.Vector3();
     this.worldQuaternion = new THREE.Quaternion();
     this.wasHeld = false;
+    this.landed = false;
+    this.onCollide = (event) => this.handleCollision(event);
 
     this.startPosition = this.el.object3D.position.clone();
     this.startQuaternion = this.el.object3D.quaternion.clone();
 
     this.body = this.createBody();
+    if (!this.isStatic()) {
+      this.body.addEventListener("collide", this.onCollide);
+    }
     this.syncBodyToEntity();
     this.system.register(this);
 
@@ -45,8 +62,8 @@ AFRAME.registerComponent("physics-body", {
 
     if (shape === "sphere") {
       body.addShape(new CANNON.Sphere(radius));
-      body.linearDamping = 0.05;
-      body.angularDamping = 0.3;
+      body.linearDamping = FLYING_LINEAR_DAMPING;
+      body.angularDamping = FLYING_ANGULAR_DAMPING;
     } else {
       const { width, height, depth } = this.el.getAttribute("geometry");
       body.addShape(new CANNON.Box(new CANNON.Vec3(width / 2, height / 2, depth / 2)));
@@ -89,6 +106,27 @@ AFRAME.registerComponent("physics-body", {
     this.body.wakeUp();
   },
 
+  // Caiu em cima de algo: corta o rolamento para a bola parar ali.
+  handleCollision(event) {
+    if (this.landed || isHeld(this.el) || !isLandingNormal(event.contact.ni, LANDING_MIN_UP)) {
+      return;
+    }
+    this.landed = true;
+    const { velocity, angularVelocity } = this.body;
+    velocity.x *= LANDING_KEEP;
+    velocity.z *= LANDING_KEEP;
+    angularVelocity.scale(LANDING_KEEP, angularVelocity);
+    this.body.linearDamping = LANDED_LINEAR_DAMPING;
+    this.body.angularDamping = LANDED_ANGULAR_DAMPING;
+  },
+
+  // Pegou ou resetou: volta a voar livre até o próximo pouso.
+  takeOff() {
+    this.landed = false;
+    this.body.linearDamping = FLYING_LINEAR_DAMPING;
+    this.body.angularDamping = FLYING_ANGULAR_DAMPING;
+  },
+
   reset() {
     if (this.isStatic() || isHeld(this.el)) {
       return;
@@ -97,6 +135,7 @@ AFRAME.registerComponent("physics-body", {
     this.el.object3D.quaternion.copy(this.startQuaternion);
     this.syncBodyToEntity();
     this.stop();
+    this.takeOff();
     this.body.wakeUp();
   },
 
@@ -127,6 +166,7 @@ AFRAME.registerComponent("physics-body", {
       this.heldVelocity.set(0, 0, 0);
       this.body.type = CANNON.Body.KINEMATIC;
       this.body.collisionResponse = false;
+      this.takeOff();
     }
     this.lastPosition.copy(this.worldPosition);
     this.syncBodyToEntity();
@@ -158,6 +198,7 @@ AFRAME.registerComponent("physics-body", {
   },
 
   remove() {
+    this.body.removeEventListener("collide", this.onCollide);
     this.system.unregister(this);
   },
 });

@@ -88,6 +88,26 @@ async function run() {
   out.afterReset = balls.map((b) => b.object3D.position.toArray().map((n) => +n.toFixed(2)));
   out.resetButtonGone = !document.querySelector("[reset-button], .reset-button");
   out.texts = [...document.querySelectorAll("a-text")].map((t) => t.getAttribute("value"));
+
+  // Prévia do professor: aparece ao apontar, some ao parar de apontar.
+  out.ballCount = balls.length;
+  out.previews = balls.map((b) => b.getAttribute("pokemon-preview")?.name || null);
+  const cursor = document.getElementById("mouse-cursor");
+  const card = () => balls[0].components["pokemon-preview"].card.object3D;
+  balls[0].emit("raycaster-intersected", { el: cursor }); await frame();
+  out.previewShownOnHover = card().visible;
+  out.previewAboveBall = +(card().position.y - balls[0].object3D.position.y).toFixed(2);
+  balls[0].emit("raycaster-intersected-cleared", { el: cursor }); await frame();
+  out.previewHiddenAfter = !card().visible;
+
+  // Pouso: arremesso para frente; depois de cair a bola para logo.
+  const body = balls[1].components["physics-body"];
+  body.body.position.set(0, 1.5, 6); body.stop(); body.takeOff();
+  body.body.velocity.set(0, 2, -6); body.body.wakeUp();
+  const zAt = [];
+  for (let i = 0; i < 200; i++) { await frame(); if (i === 60 || i === 199) zAt.push(+body.body.position.z.toFixed(2)); }
+  out.landed = body.landed;
+  out.rollAfterLandingM = +Math.abs(zAt[1] - zAt[0]).toFixed(2);
   out.errors = errors;
   report(out);
 }

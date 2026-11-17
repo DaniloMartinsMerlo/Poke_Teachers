@@ -35,9 +35,12 @@
         <a-entity arena-light-towers></a-entity>
       </a-entity>
 
-      <!-- Suporte das pokébolas ao lado direito do jogador (e não na
-           frente), com as bolas enfileiradas ao longo do corpo. -->
-      <a-entity ball-rack position="0.6 0 7" rotation="0 90 0"></a-entity>
+      <!-- Suportes das pokébolas, cada um à direita do seu treinador, com
+           as bolas enfileiradas ao longo do corpo. "pokemon" = professor
+           guardado em cada bola, na ordem (nomes em src/config/teachers.js). -->
+      <a-entity ball-rack="pokemon: Fabi, Murilo, Rodinha" position="0.6 0 7" rotation="0 90 0"></a-entity>
+      <!-- Adversário (do outro lado do campo, olhando para +z). -->
+      <a-entity ball-rack="pokemon: Rodinha, Murilo, Fabi" position="-0.6 0 -7" rotation="0 -90 0"></a-entity>
 
       <!-- JOGADOR
            Mãos rastreadas: pinça pega e solta.

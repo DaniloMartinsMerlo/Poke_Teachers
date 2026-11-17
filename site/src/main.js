@@ -19,6 +19,7 @@ import "./components/interaction/hand-grabber.js";
 import "./components/interaction/controller-grabber.js";
 import "./components/interaction/cursor-grabber.js";
 import "./components/interaction/controller-input-gate.js";
+import "./components/interaction/pokemon-preview.js";
 
 import "./components/locomotion/player-rig.js";
 import "./components/locomotion/player-collision.js";

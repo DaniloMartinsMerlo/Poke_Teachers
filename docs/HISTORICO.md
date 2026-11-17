@@ -85,3 +85,40 @@ por último). Formato: data, o que mudou, decisões e o motivo, pendências.
 ### Pendências
 - Validar a resposta das colisões no Quest 3, especialmente arremessos
   contra arquibancadas e torres.
+
+## 2026-11-17 — professores nas pokébolas, pedestal do adversário, pouso
+
+O projeto (faculdade): batalha Pokémon em que os pokémons são os
+professores.
+
+### Mudanças
+- **Pedestal do adversário** do outro lado do campo (`-0.6 0 -7`, girado
+  -90°), à direita de quem está lá, também com 3 pokébolas.
+- **Professores nas bolas:** `ball-rack` ganhou `pokemon` (lista de nomes,
+  na ordem das bolas). Nomes = nomes dos arquivos em `site/assets/img/`,
+  mapeados em `src/config/teachers.js`.
+- **Prévia ao apontar:** componente `pokemon-preview`. Enquanto algum
+  raio (mouse, laser do controle ou olhar no VR) aponta para a bola, um
+  cartão com foto e nome aparece 32 cm acima dela, virado para a câmera.
+  Some quando a bola está na mão.
+- **Bola para onde cai:** no primeiro contato "de cima" (normal com
+  |y| ≥ 0,7, ver `domain/landing.js`) a bola fica com 20% da velocidade
+  horizontal e do giro e passa a ter amortecimento alto. Ao pegar ou
+  resetar volta ao normal. Quique contra chão/madeira reduzido.
+- **Arremesso mais forte:** `throwBoost` 0,7 → 1, limite 8 → 12 m/s;
+  mouse 2,5 → 4,5 m/s (+1,2 para cima).
+
+### Decisões e motivos
+- Cartão da prévia é filho da cena, não da bola: a bola tem escala 0,01 e
+  gira.
+- Prévia via eventos `raycaster-intersected(-cleared)`: vale para mouse e
+  laser sem código específico de cada um. Batida de lado (parede) não
+  conta como pouso, para a bola não "grudar" na parede.
+- Adversário com os mesmos 3 professores (ordem invertida) porque só há
+  3 imagens por enquanto.
+
+### Pendências
+- Mãos rastreadas não têm raio, então não mostram a prévia (possível:
+  mostrar quando a mão chega perto).
+- Janela à esquerda do jogador para escolher ataques e itens.
+- Definir os professores do adversário quando houver mais imagens.

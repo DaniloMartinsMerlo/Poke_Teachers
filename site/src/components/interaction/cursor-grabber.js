@@ -1,8 +1,8 @@
 import { MOUSE_CURSOR_ID } from "../../config/constants.js";
 import { clearHeld, isHeld, markHeld } from "./grab-state.js";
 
-const THROW_SPEED = 2.5;
-const THROW_LIFT = new THREE.Vector3(0, 0.75, 0);
+const THROW_SPEED = 4.5;
+const THROW_LIFT = new THREE.Vector3(0, 1.2, 0);
 
 // Computador: 1º clique pega (a bola vai junto com a câmera), 2º clique
 // arremessa para frente. Só responde ao cursor do mouse, para não brigar

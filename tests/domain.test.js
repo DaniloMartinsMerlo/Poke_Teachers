@@ -52,3 +52,11 @@ test("findNearest respeita a distância máxima", () => {
   assert.equal(findNearest([0.5, 0.1, 0.2], origin, 0.3, (p) => p), 0.1);
   assert.equal(findNearest([0.5], origin, 0.3, (p) => p), null);
 });
+
+import { isLandingNormal } from "../site/src/domain/landing.js";
+
+test("pouso: contato vindo de baixo conta, batida de lado não", () => {
+  assert.equal(isLandingNormal({ x: 0, y: 1, z: 0 }, 0.7), true);
+  assert.equal(isLandingNormal({ x: 0, y: -0.9, z: 0.4 }, 0.7), true);
+  assert.equal(isLandingNormal({ x: 1, y: 0.1, z: 0 }, 0.7), false);
+});

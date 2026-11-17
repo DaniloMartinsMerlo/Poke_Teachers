@@ -1,7 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveCircleAgainstRects, overlapsHeight } from "../site/src/domain/collision.js";
-import { isBasket } from "../site/src/domain/scoring.js";
 import { findNearest } from "../site/src/domain/nearest.js";
 
 // Mureta direita da arena: lado de dentro em x = 7.
@@ -46,13 +45,6 @@ test("deslizar ao longo da parede mantém o movimento paralelo", () => {
 test("voando acima da mureta não colide", () => {
   assert.equal(overlapsHeight(rightWall, 1.0, 2.6), false);
   assert.equal(overlapsHeight(rightWall, 0, 1.6), true);
-});
-
-test("cesta só conta de cima para baixo e por dentro do aro", () => {
-  const hoop = { x: 0, y: 3, z: 0 };
-  assert.equal(isBasket(3.1, { x: 0.1, y: 2.9, z: 0 }, hoop, 0.28), true);
-  assert.equal(isBasket(2.9, { x: 0.1, y: 3.1, z: 0 }, hoop, 0.28), false);
-  assert.equal(isBasket(3.1, { x: 0.5, y: 2.9, z: 0 }, hoop, 0.28), false);
 });
 
 test("findNearest respeita a distância máxima", () => {

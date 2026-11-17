@@ -66,3 +66,22 @@ por último). Formato: data, o que mudou, decisões e o motivo, pendências.
 - Só com as mãos não há como andar artificialmente nem resetar (sem
   analógico nem B/Y). Possível gesto para isso.
 - A cesta de basquete é provisória.
+
+## 2026-11-17 — remoção da cesta e colisão completa das pokébolas
+
+### Mudanças
+- Removida a cesta provisória, sua pontuação, modelo 3D e componentes
+  exclusivos.
+- Adicionados corpos estáticos às arquibancadas, torres, placar e ao tampo
+  do suporte das pokébolas; os postes passaram a usar caixas físicas.
+- Mantidas as pokébolas como corpos dinâmicos com contato contra todos os
+  obstáculos físicos da arena.
+
+### Decisões e motivos
+- Os obstáculos visuais passaram a usar `physics-body` porque o cannon.js
+  só detecta colisão entre corpos registrados; assim as pokébolas não
+  atravessam estruturas da arena.
+
+### Pendências
+- Validar a resposta das colisões no Quest 3, especialmente arremessos
+  contra arquibancadas e torres.

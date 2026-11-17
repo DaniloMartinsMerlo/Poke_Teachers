@@ -6,8 +6,9 @@ import { createEntity, vec3 } from "../../utils/entity.js";
 function lightTower(x, z) {
   const { height } = LIGHT_TOWERS;
   return createEntity("a-entity", { position: vec3(x, 0, z) }, [
-    createEntity("a-cylinder", {
-      position: vec3(0, height / 2, 0), radius: 0.15, height, color: "#7a7a7a",
+    createEntity("a-box", {
+      position: vec3(0, height / 2, 0), width: 0.3, height, depth: 0.3, color: "#7a7a7a",
+      "physics-body": "shape: box; mass: 0; material: wood",
     }),
     createEntity("a-box", {
       position: vec3(0, height + 0.2, 0),
@@ -16,6 +17,7 @@ function lightTower(x, z) {
       depth: 0.3,
       color: "#fffbe0",
       material: "emissive: #fff6c0; emissiveIntensity: 0.8",
+      "physics-body": "shape: box; mass: 0; material: wood",
     }),
   ]);
 }

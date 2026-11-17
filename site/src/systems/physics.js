@@ -67,15 +67,6 @@ AFRAME.registerSystem("physics", {
     this.world.removeBody(component.body);
   },
 
-  /** Corpo estático avulso (ex.: aro da cesta). */
-  addStaticBody(body) {
-    this.world.addBody(body);
-  },
-
-  removeStaticBody(body) {
-    this.world.removeBody(body);
-  },
-
   resetAll() {
     this.components.forEach((component) => component.reset());
   },

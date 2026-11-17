@@ -19,6 +19,7 @@ AFRAME.registerComponent("arena-bleachers", {
       height,
       depth: length,
       color: index % 2 === 0 ? colorA : colorB,
+      "physics-body": "shape: box; mass: 0; material: wood",
     }));
 
     const back = createEntity("a-box", {
@@ -27,6 +28,7 @@ AFRAME.registerComponent("arena-bleachers", {
       height: backWall.height,
       depth: length,
       color: COLORS.concrete,
+      "physics-body": "shape: box; mass: 0; material: wood",
     });
 
     [...steps, back].forEach((child) => this.el.appendChild(child));

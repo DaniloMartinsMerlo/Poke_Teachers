@@ -36,6 +36,7 @@ AFRAME.registerComponent("ball-rack", {
         position: vec3(0, height + 0.01, 0),
         width: width + 0.02, height: 0.02, depth: depth + 0.02,
         color: "#e3350d",
+        "physics-body": "shape: box; mass: 0; material: wood",
       }),
     ].forEach((child) => this.el.appendChild(child));
   },

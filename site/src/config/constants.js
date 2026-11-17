@@ -25,7 +25,6 @@ export const INPUT_MODE = Object.freeze({
 export const EVENTS = Object.freeze({
   INPUT_MODE_CHANGED: "inputmodechanged",
   GAME_RESET: "gamereset",
-  SCORE_CHANGED: "scorechanged",
 });
 
 // Quadros muito longos (aba em segundo plano) não podem gerar saltos.

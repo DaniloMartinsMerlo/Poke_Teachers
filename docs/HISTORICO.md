@@ -197,3 +197,18 @@ professores.
   `config/hud.js`.
 - No computador o mouse só gira a câmera: o HUD fica parado à esquerda e
   basta olhar para ele para clicar.
+
+## 2026-11-18 — carretilha reta ao longo do laser
+
+### Mudanças
+- Com o controle, afastar/aproximar a bola pelo analógico agora move a
+  bola paralela ao laser (`domain/reel.js` → `reelAlongRay`). Antes ela
+  ia na linha "centro do controle → bola" e entortava em relação ao laser.
+
+### Decisões e motivos
+- No Quest o `laser-controls` aplica origem e direção do raio vindas do
+  modelo do controle (evento `controllermodelready`): o laser não sai reto
+  do centro do controle. A carretilha lê `raycaster.origin/direction` e
+  mantém o desvio lateral da bola, para não "pular" para o raio.
+- Mouse continua com `moveAlongHoldLine`: o cursor sai do centro da
+  câmera, então lá as duas linhas coincidem.

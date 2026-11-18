@@ -1,9 +1,9 @@
 import { EVENTS } from "../../config/constants.js";
 import { HOLD_MAX_DISTANCE, HOLD_MIN_DISTANCE, REEL_DEAD_ZONE, REEL_SPEED } from "../../config/grab.js";
-import { reelDistance, thumbstickReel } from "../../domain/reel.js";
+import { reelAlongRay, thumbstickReel } from "../../domain/reel.js";
 import { frameSeconds } from "../../utils/time.js";
 import {
-  clearHeld, isFreeGrabbable, markHeld, moveAlongHoldLine, nearestFreeGrabbable,
+  clearHeld, isFreeGrabbable, markHeld, nearestFreeGrabbable,
 } from "./grab-state.js";
 
 const GRAB_EVENTS = ["gripdown", "triggerdown"];
@@ -15,6 +15,9 @@ const RELEASE_EVENTS = ["gripup", "triggerup"];
 // rastreada, quem pega é o "hand-grabber".
 // Segurando, o analógico dessa mão vira carretilha: para frente afasta a
 // bola, para trás puxa (a locomoção dessa mão pausa enquanto segura).
+// A bola anda paralela ao laser (origem e direção do "raycaster", que o
+// laser-controls ajusta ao modelo do controle), e não na linha centro do
+// controle → bola, que no Quest diverge do laser.
 AFRAME.registerComponent("controller-grabber", {
   schema: {
     hand: { default: "left", oneOf: ["left", "right"] },
@@ -25,6 +28,7 @@ AFRAME.registerComponent("controller-grabber", {
     this.inputMode = this.el.sceneEl.systems["input-mode"];
     this.heldObject = null;
     this.controllerPosition = new THREE.Vector3();
+    this.rayDirection = new THREE.Vector3();
     this.stickY = 0;
     this.onThumbstick = (event) => {
       this.stickY = (event.detail && event.detail.y) || 0;
@@ -58,10 +62,22 @@ AFRAME.registerComponent("controller-grabber", {
     }
     const change = thumbstickReel(this.stickY, REEL_SPEED, frameSeconds(delta), REEL_DEAD_ZONE);
     if (change) {
-      const object = this.heldObject.object3D;
-      moveAlongHoldLine(object, reelDistance(
-        object.position.length(), change, HOLD_MIN_DISTANCE, HOLD_MAX_DISTANCE));
+      const { origin, direction } = this.laserRay();
+      const position = this.heldObject.object3D.position;
+      const next = reelAlongRay(position, origin, direction, change, HOLD_MIN_DISTANCE, HOLD_MAX_DISTANCE);
+      position.set(next.x, next.y, next.z);
     }
+  },
+
+  // Raio do laser no espaço do controle (o mesmo da bola segurada).
+  laserRay() {
+    const raycaster = this.el.getAttribute("raycaster") || {};
+    const origin = raycaster.origin || { x: 0, y: 0, z: 0 };
+    this.rayDirection.copy(raycaster.direction || { x: 0, y: 0, z: -1 });
+    if (this.rayDirection.lengthSq() < 1e-8) {
+      this.rayDirection.set(0, 0, -1);
+    }
+    return { origin, direction: this.rayDirection.normalize() };
   },
 
   objectInReach() {

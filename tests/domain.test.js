@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resolveCircleAgainstRects, overlapsHeight } from "../site/src/domain/collision.js";
 import { findNearest } from "../site/src/domain/nearest.js";
-import { reelDistance, thumbstickReel } from "../site/src/domain/reel.js";
+import { reelAlongRay, reelDistance, thumbstickReel } from "../site/src/domain/reel.js";
 
 // Mureta direita da arena: lado de dentro em x = 7.
 const rightWall = { minX: 7, maxX: 7.3, minY: 0, maxY: 0.8, minZ: -10.3, maxZ: 10.3 };
@@ -138,4 +138,17 @@ test("HUD: folga ignora inclinar a cabeça e arrasta ao andar", () => {
   assert.ok(Math.abs(moved.x - 0.7) < 1e-9 && moved.z === 0);
   assert.equal(pullWithin1D(1.6, 1.7, 0.15), 1.6);
   assert.ok(Math.abs(pullWithin1D(1.6, 1.2, 0.15) - 1.35) < 1e-9);
+});
+
+test("carretilha anda paralela ao laser inclinado, mantendo o desvio", () => {
+  const dir = { x: 0, y: -Math.SQRT1_2, z: -Math.SQRT1_2 };
+  const origin = { x: 0, y: 0.01, z: 0 };
+  const start = { x: 0.05, y: -0.3, z: -0.3 };
+  const p = reelAlongRay(start, origin, dir, 1, 0.15, 15);
+  assert.ok(Math.abs(p.x - 0.05) < 1e-9);
+  assert.ok(Math.abs((p.y - start.y) - (p.z - start.z)) < 1e-9);
+  const along = (q) => (q.x - origin.x) * dir.x + (q.y - origin.y) * dir.y + (q.z - origin.z) * dir.z;
+  assert.ok(Math.abs(along(p) - along(start) - 1) < 1e-9);
+  const close = reelAlongRay(start, origin, dir, -5, 0.15, 15);
+  assert.ok(Math.abs(along(close) - 0.15) < 1e-9);
 });

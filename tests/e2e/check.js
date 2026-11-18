@@ -139,6 +139,15 @@ async function run() {
   for (let i = 0; i < 60; i++) await frame();
   out.reelPulledToMin = +reelBall.object3D.position.length().toFixed(2);
   rightCtrl.emit("thumbstickmoved", { x: 0, y: 0 });
+  // Laser inclinado (como no Quest): a bola anda reta, paralela ao laser.
+  rightCtrl.setAttribute("raycaster", { origin: { x: 0, y: 0.005, z: -0.02 }, direction: { x: 0, y: -0.6, z: -0.8 } });
+  const lp0 = reelBall.object3D.position.clone();
+  rightCtrl.emit("thumbstickmoved", { x: 0, y: -1 });
+  for (let i = 0; i < 20; i++) await frame();
+  rightCtrl.emit("thumbstickmoved", { x: 0, y: 0 });
+  const moved = reelBall.object3D.position.clone().sub(lp0).normalize();
+  out.reelParallelToLaser = +moved.dot(new THREE.Vector3(0, -0.6, -0.8)).toFixed(3);
+  rightCtrl.setAttribute("raycaster", { origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 0, z: -1 } });
 
   // Encaixe: soltar perto do encaixe (livre) trava a bola nele.
   const slot = scene.querySelector("[ball-rack]").components["ball-rack"].slots[0];

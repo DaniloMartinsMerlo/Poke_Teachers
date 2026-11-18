@@ -10,6 +10,8 @@ description: Guia para mexer no jogo de pokébolas em realidade virtual (A-Frame
    pendências. Não desfaça uma decisão registrada sem dizer ao usuário.
 2. Leia `site/src/main.js` para ver os componentes existentes e o
    componente mais próximo do que vai mudar. Reaproveite antes de criar.
+3. Veja `docs/A_FAZER.md`: o pedido pode já estar descrito lá, com
+   detalhes combinados.
 
 ## Ao terminar
 1. Rode `npm test` e `npm run test:e2e` (raiz do repositório). Se mudou
@@ -18,7 +20,9 @@ description: Guia para mexer no jogo de pokébolas em realidade virtual (A-Frame
 2. Acrescente uma entrada no fim de `docs/HISTORICO.md`: data, mudanças,
    decisões **com o motivo**, pendências. Curto e objetivo.
 3. Atualize o `README.md` se mudou controles, estrutura ou como rodar.
-4. Diga ao usuário o que precisa ser testado no headset — o e2e simula
+4. Atualize `docs/A_FAZER.md`: marque o que foi feito e acrescente o que
+   ficou pendente.
+5. Diga ao usuário o que precisa ser testado no headset — o e2e simula
    VR, não substitui o Quest.
 
 ## Stack e execução

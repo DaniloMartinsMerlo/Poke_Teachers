@@ -248,3 +248,10 @@ professores.
 - Sistema de turnos (os dois escolhem, o mais rápido ataca primeiro).
 - O que acontece ao desmaiar (trocar obrigatoriamente, fim de jogo).
 - Power-ups, Desistir, HUD do jogador 2 / CPU.
+
+## 2026-11-18 — lista "a fazer"
+
+- Criado `docs/A_FAZER.md` com o que falta implementar (README, turnos,
+  recolher PokeProf desmaiado, card do PokeProf em campo acima do HUD) e
+  as pendências espalhadas nas entradas anteriores deste histórico. A
+  partir daqui, pendências novas vão para lá.

@@ -183,3 +183,17 @@ professores.
 - No WSL sem `google-chrome`, o e2e roda com o Chrome do Windows via um
   script `google-chrome` no PATH que chama `chrome.exe` (trocando
   `--user-data-dir` por uma pasta do Windows).
+
+### Ajuste no mesmo dia — HUD segue o corpo, não a cabeça
+- Antes o HUD girava com a cabeça: ao virar para clicar, ele fugia. Agora
+  é filho do rig (`index.html`): anda e gira com WASD/analógicos, mas
+  fica parado quando só a cabeça vira ou inclina.
+- Andar de verdade no quarto: folga de 30 cm (15 cm na altura) antes de o
+  HUD ser arrastado (`domain/hud.js` → `pullWithin`), para inclinar até um
+  botão não o mover.
+- Girar o corpo de verdade: o VR não sabe para onde o tronco aponta, então
+  se a cabeça fica mais de 100° virada por 1,2 s, o HUD se recentraliza
+  devagar. Também reancora ao entrar/sair do VR. Valores em
+  `config/hud.js`.
+- No computador o mouse só gira a câmera: o HUD fica parado à esquerda e
+  basta olhar para ele para clicar.

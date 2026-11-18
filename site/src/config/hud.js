@@ -6,8 +6,18 @@
 export const HUD_ANGLE_DEG = 38;
 export const HUD_DISTANCE = 0.75;
 export const HUD_DROP = 0.3;
-// Rapidez com que o HUD alcança a cabeça (1/s); maior = mais "grudado".
-export const HUD_FOLLOW_RATE = 6;
+// O HUD segue o corpo (rig), não a cabeça: virar a cabeça para olhar o
+// menu não o tira do lugar. Como o VR não sabe para onde o tronco aponta,
+// se a cabeça ficar virada mais que HUD_RECENTER_DEG para o mesmo lado por
+// HUD_RECENTER_DELAY_MS, entende-se que o corpo girou e o HUD vem junto,
+// suavemente (HUD_RECENTER_RATE, 1/s).
+export const HUD_RECENTER_DEG = 100;
+export const HUD_RECENTER_DELAY_MS = 1200;
+export const HUD_RECENTER_RATE = 5;
+// Folga para movimentos da cabeça (m): inclinar até isto para alcançar um
+// botão não move o HUD; andar de verdade além disso o arrasta junto.
+export const HUD_POSITION_SLACK = 0.3;
+export const HUD_HEIGHT_SLACK = 0.15;
 
 // Tamanho dos botões (m) e espaço entre eles.
 export const HUD_BUTTON = Object.freeze({ width: 0.2, height: 0.075, gap: 0.015 });

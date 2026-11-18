@@ -43,8 +43,6 @@
       <!-- Adversário (do outro lado do campo, olhando para +z). -->
       <a-entity ball-rack="player: p2; pokemon: Rodinha, Murilo, Fabi" position="-0.6 0 -7" rotation="0 -90 0"></a-entity>
 
-      <!-- Menu de batalha do jogador 1: acompanha a cabeça pela esquerda. -->
-      <a-entity battle-hud="player: p1"></a-entity>
 
       <!-- JOGADOR
            Mãos rastreadas: pinça pega e solta.
@@ -66,6 +64,8 @@
         <a-entity player-hand="hand: right"></a-entity>
         <a-entity player-controller="hand: left; locomotion: move"></a-entity>
         <a-entity player-controller="hand: right; locomotion: turn"></a-entity>
+        <!-- Menu de batalha do jogador 1: à esquerda, segue o corpo. -->
+        <a-entity battle-hud="player: p1"></a-entity>
       </a-entity>
 
       <a-sky color="#b9e5ff"></a-sky>

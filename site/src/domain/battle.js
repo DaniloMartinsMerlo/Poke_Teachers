@@ -51,8 +51,13 @@ export function arcPoint(from, to, t, height) {
  * @param {number} amount fração do caminho (0–1)
  */
 export function approachAngle(current, target, amount) {
+  return current + angleBetween(current, target) * Math.min(Math.max(amount, 0), 1);
+}
+
+/** Diferença `target - current` em radianos, entre -π e π. */
+export function angleBetween(current, target) {
   let diff = (target - current) % (Math.PI * 2);
   if (diff > Math.PI) diff -= Math.PI * 2;
   if (diff < -Math.PI) diff += Math.PI * 2;
-  return current + diff * Math.min(Math.max(amount, 0), 1);
+  return diff;
 }

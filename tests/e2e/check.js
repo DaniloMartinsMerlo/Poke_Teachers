@@ -168,15 +168,35 @@ async function run() {
   out.hudGrid2x2 = [coords("x"), coords("y")];
   const hudPlane = () => hud.querySelector("a-plane").getAttribute("height");
   out.hudMainPanelHeight = +(+hudPlane()).toFixed(3);
-  const hudBefore = hud.object3D.position.clone();
+  const hudBefore = hud.object3D.getWorldPosition(new THREE.Vector3());
   rig.object3D.position.x += 2; for (let i = 0; i < 3; i++) await frame();
-  out.hudFollowedM = +(hud.object3D.position.x - hudBefore.x).toFixed(2);
+  out.hudFollowedM = +(hud.object3D.getWorldPosition(new THREE.Vector3()).x - hudBefore.x).toFixed(2);
   rig.object3D.position.x -= 2; await frame();
   const headNow = head();
-  const toHud = hud.object3D.position.clone().sub(headNow);
+  const toHud = hud.object3D.getWorldPosition(new THREE.Vector3()).sub(headNow);
   const fwd = scene.camera.getWorldDirection(new THREE.Vector3());
   // Esquerda = produto vetorial (frente × cima) negativo.
   out.hudOnLeft = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).dot(toHud) < 0;
+  // Segue o corpo, não a cabeça: virar a cabeça 50° não mexe o HUD.
+  const look = scene.camera.el.components["look-controls"];
+  const hudWorld = () => hud.object3D.getWorldPosition(new THREE.Vector3());
+  const restPos = hudWorld();
+  look.yawObject.rotation.y = 0.87;
+  for (let i = 0; i < 30; i++) await frame();
+  out.hudStillWhenHeadTurns = +hudWorld().distanceTo(restPos).toFixed(3);
+  // Inclinar a cabeça 20 cm (alcançar um botão) também não.
+  scene.camera.el.object3D.position.x -= 0.2;
+  for (let i = 0; i < 5; i++) await frame();
+  out.hudStillWhenLeaning = +hudWorld().distanceTo(restPos).toFixed(3);
+  scene.camera.el.object3D.position.x += 0.2;
+  // Girar o corpo (cabeça virada para trás por mais de 1,2 s) traz o HUD.
+  look.yawObject.rotation.y = Math.PI;
+  for (let i = 0; i < 160; i++) await frame();
+  const hudDir = hudWorld().sub(head()).setY(0).normalize();
+  const backDir = new THREE.Vector3(0, 0, 1);
+  out.hudRecenteredAfterBodyTurn = hudDir.dot(backDir) > 0.5;
+  look.yawObject.rotation.y = 0;
+  for (let i = 0; i < 160; i++) await frame();
   out.hudPointableByMouse = cursor.components.raycaster.objects.some((o) => o.el?.classList.contains("hud-button"));
   await press("attack");
   out.hudAttackPage = [hud.dataset.page, hudButtons().length];

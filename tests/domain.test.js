@@ -90,7 +90,7 @@ test("analógico para frente afasta, para trás puxa, zona morta ignora", () => 
 });
 
 import { approachAngle, arcPoint, canSendOut, returnSlot } from "../site/src/domain/battle.js";
-import { chooseHudOption } from "../site/src/domain/hud.js";
+import { chooseHudOption, pullWithin, pullWithin1D } from "../site/src/domain/hud.js";
 
 test("batalha: um pokémon por jogador, jogadores independentes", () => {
   const active = { p1: "bolaA" };
@@ -130,4 +130,12 @@ test("HUD: navegação entre páginas e ações anunciadas", () => {
     { page: "main", emit: { action: "attack", id: "chamada-oral" } });
   assert.deepEqual(chooseHudOption("powerup", { id: "feriado" }),
     { page: "main", emit: { action: "powerup", id: "feriado" } });
+});
+
+test("HUD: folga ignora inclinar a cabeça e arrasta ao andar", () => {
+  assert.deepEqual(pullWithin({ x: 0, z: 0 }, { x: 0.2, z: 0 }, 0.3), { x: 0, z: 0 });
+  const moved = pullWithin({ x: 0, z: 0 }, { x: 1, z: 0 }, 0.3);
+  assert.ok(Math.abs(moved.x - 0.7) < 1e-9 && moved.z === 0);
+  assert.equal(pullWithin1D(1.6, 1.7, 0.15), 1.6);
+  assert.ok(Math.abs(pullWithin1D(1.6, 1.2, 0.15) - 1.35) < 1e-9);
 });

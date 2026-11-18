@@ -27,3 +27,31 @@ export function chooseHudOption(page, choice) {
   const action = page === PAGES.ATTACK ? ACTIONS.ATTACK : ACTIONS.POWERUP;
   return { page: PAGES.MAIN, emit: { action, id: choice.id } };
 }
+
+/**
+ * "Folga": o ponto `anchor` só se move quando `target` se afasta mais que
+ * `slack`, e aí é puxado até ficar a `slack` de distância. Serve para o
+ * HUD não fugir quando o jogador inclina a cabeça para apertar um botão.
+ * @param {{x:number,z:number}} anchor
+ * @param {{x:number,z:number}} target
+ * @param {number} slack
+ */
+export function pullWithin(anchor, target, slack) {
+  const dx = target.x - anchor.x;
+  const dz = target.z - anchor.z;
+  const distance = Math.hypot(dx, dz);
+  if (distance <= slack) {
+    return { x: anchor.x, z: anchor.z };
+  }
+  const k = (distance - slack) / distance;
+  return { x: anchor.x + dx * k, z: anchor.z + dz * k };
+}
+
+/** Mesmo que `pullWithin`, em uma dimensão (altura). */
+export function pullWithin1D(anchor, target, slack) {
+  const diff = target - anchor;
+  if (Math.abs(diff) <= slack) {
+    return anchor;
+  }
+  return target - Math.sign(diff) * slack;
+}

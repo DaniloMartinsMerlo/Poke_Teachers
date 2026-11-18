@@ -7,17 +7,21 @@ import {
   HUD_COLORS,
   HUD_DISTANCE,
   HUD_DROP,
-  HUD_FOLLOW_RATE,
+  HUD_HEIGHT_SLACK,
   HUD_LAYOUT,
   HUD_PAGES,
   HUD_PINCH_REACH,
+  HUD_POSITION_SLACK,
+  HUD_RECENTER_DEG,
+  HUD_RECENTER_DELAY_MS,
+  HUD_RECENTER_RATE,
   HUD_STATUS_MS,
   MAIN_OPTIONS,
   POWERUPS,
 } from "../../config/hud.js";
 import { playerInfo } from "../../config/players.js";
-import { approachAngle } from "../../domain/battle.js";
-import { chooseHudOption } from "../../domain/hud.js";
+import { angleBetween, approachAngle } from "../../domain/battle.js";
+import { chooseHudOption, pullWithin, pullWithin1D } from "../../domain/hud.js";
 import { frameSeconds } from "../../utils/time.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
 
@@ -29,9 +33,11 @@ const PAGE_TITLES = Object.freeze({
 
 const BACK_OPTION = Object.freeze({ action: HUD_ACTIONS.BACK, label: "Voltar" });
 
-// Menu de batalha que acompanha o jogador pela esquerda, um pouco abaixo
-// dos olhos. Segue a posição da cabeça na hora e o giro dela com atraso
-// suave (não "gruda" no rosto, o que enjoa no VR).
+// Menu de batalha à esquerda do jogador, um pouco abaixo dos olhos. Segue
+// o CORPO, não a cabeça: virar a cabeça para olhar/apertar um botão deixa
+// o menu parado. É filho do rig, então anda e gira junto com a locomoção
+// (WASD, analógicos). Andar de verdade (passos no quarto) o arrasta depois
+// de uma folga; girar o corpo de verdade o recentraliza (ver config/hud.js).
 //
 // Botões em grade 2x2 ("Voltar" ocupa a linha de baixo nas páginas de
 // ataque e power-up). Botões: mouse (olhar + clique), laser do controle (gatilho) ou pinça da
@@ -40,7 +46,7 @@ const BACK_OPTION = Object.freeze({ action: HUD_ACTIONS.BACK, label: "Voltar" })
 // "Voltar". Cada escolha vira o evento HUD_ACTION na cena; "Trocar" também
 // pede RECALL_REQUESTED (o suporte traz a bola de volta).
 //
-// O HUD é filho da cena, e não da câmera: assim a posição é suavizada.
+// Deve ficar dentro do rig do jogador no HTML.
 AFRAME.registerComponent("battle-hud", {
   schema: {
     player: { default: "p1" },
@@ -49,11 +55,17 @@ AFRAME.registerComponent("battle-hud", {
   init() {
     this.page = HUD_PAGES.MAIN;
     this.buttons = [];
-    this.yaw = null;
+    // Âncora do corpo no espaço do rig: posição dos olhos e direção.
+    this.anchor = null;
+    this.bodyYaw = 0;
+    this.turnedAwayMs = 0;
+    this.recentering = false;
     this.statusTimer = null;
     this.head = new THREE.Vector3();
     this.forward = new THREE.Vector3();
+    this.eye = new THREE.Vector3();
     this.local = new THREE.Vector3();
+    this.rigQuaternion = new THREE.Quaternion();
 
     this.build();
     this.showPage(HUD_PAGES.MAIN);
@@ -64,6 +76,10 @@ AFRAME.registerComponent("battle-hud", {
       }
     };
     this.onPinch = (event) => this.pressAtPinch(event);
+    // Entrou/saiu do VR: a cabeça "pula"; reancora na nova posição.
+    this.onViewChanged = () => { this.anchor = null; };
+    this.el.sceneEl.addEventListener("enter-vr", this.onViewChanged);
+    this.el.sceneEl.addEventListener("exit-vr", this.onViewChanged);
     this.el.sceneEl.addEventListener(EVENTS.SEND_OUT_BLOCKED, this.onBlocked);
     whenSceneLoaded(this.el.sceneEl, () => {
       this.hands = [...this.el.sceneEl.querySelectorAll("[player-hand]")];
@@ -233,31 +249,65 @@ AFRAME.registerComponent("battle-hud", {
     }
   },
 
-  // Acompanha a cabeça: posição imediata, giro suavizado.
-  tick(time, delta) {
-    const camera = this.el.sceneEl.camera;
-    if (!camera) {
+  // Cabeça no espaço do pai (rig): posição e direção horizontal (rad).
+  readHead(camera) {
+    const parent = this.el.object3D.parent;
+    camera.getWorldPosition(this.head);
+    parent.worldToLocal(this.head);
+    camera.getWorldDirection(this.forward);
+    parent.getWorldQuaternion(this.rigQuaternion);
+    this.forward.applyQuaternion(this.rigQuaternion.invert());
+    return Math.atan2(-this.forward.x, -this.forward.z);
+  },
+
+  // O corpo só "gira" quando a cabeça fica virada para longe por um tempo.
+  updateBodyYaw(heading, deltaMs) {
+    const away = Math.abs(angleBetween(this.bodyYaw, heading));
+    if (this.recentering) {
+      this.bodyYaw = approachAngle(this.bodyYaw, heading,
+        1 - Math.exp(-HUD_RECENTER_RATE * frameSeconds(deltaMs)));
+      this.recentering = away > THREE.MathUtils.degToRad(5);
       return;
     }
-    camera.getWorldPosition(this.head);
-    camera.getWorldDirection(this.forward);
-    const heading = Math.atan2(-this.forward.x, -this.forward.z);
-    this.yaw = this.yaw === null
-      ? heading
-      : approachAngle(this.yaw, heading, 1 - Math.exp(-HUD_FOLLOW_RATE * frameSeconds(delta)));
+    this.turnedAwayMs = away > THREE.MathUtils.degToRad(HUD_RECENTER_DEG)
+      ? this.turnedAwayMs + deltaMs
+      : 0;
+    if (this.turnedAwayMs >= HUD_RECENTER_DELAY_MS) {
+      this.recentering = true;
+      this.turnedAwayMs = 0;
+    }
+  },
 
-    const angle = this.yaw + THREE.MathUtils.degToRad(HUD_ANGLE_DEG);
+  tick(time, delta) {
+    const camera = this.el.sceneEl.camera;
+    if (!camera || !this.el.object3D.parent) {
+      return;
+    }
+    const heading = this.readHead(camera);
+    if (!this.anchor) {
+      this.anchor = this.head.clone();
+      this.bodyYaw = heading;
+    }
+    const flat = pullWithin(this.anchor, this.head, HUD_POSITION_SLACK);
+    this.anchor.set(flat.x, pullWithin1D(this.anchor.y, this.head.y, HUD_HEIGHT_SLACK), flat.z);
+    this.updateBodyYaw(heading, Math.min(delta || 0, 100));
+
+    const angle = this.bodyYaw + THREE.MathUtils.degToRad(HUD_ANGLE_DEG);
     const object = this.el.object3D;
     object.position.set(
-      this.head.x - Math.sin(angle) * HUD_DISTANCE,
-      this.head.y - HUD_DROP,
-      this.head.z - Math.cos(angle) * HUD_DISTANCE);
-    object.lookAt(this.head);
+      this.anchor.x - Math.sin(angle) * HUD_DISTANCE,
+      this.anchor.y - HUD_DROP,
+      this.anchor.z - Math.cos(angle) * HUD_DISTANCE);
+    // Vira para os olhos da âncora (lookAt usa coordenadas de mundo).
+    object.parent.localToWorld(this.eye.copy(this.anchor));
+    object.lookAt(this.eye);
   },
 
   remove() {
     clearTimeout(this.statusTimer);
     this.el.sceneEl.removeEventListener(EVENTS.SEND_OUT_BLOCKED, this.onBlocked);
+    this.el.sceneEl.removeEventListener("enter-vr", this.onViewChanged);
+    this.el.sceneEl.removeEventListener("exit-vr", this.onViewChanged);
     (this.hands || []).forEach((hand) => hand.removeEventListener("pinchstarted", this.onPinch));
   },
 });

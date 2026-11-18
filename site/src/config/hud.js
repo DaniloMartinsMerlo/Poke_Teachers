@@ -24,6 +24,8 @@ export const HUD_BUTTON = Object.freeze({ width: 0.2, height: 0.075, gap: 0.015 
 // Painel (m): margem em volta, faixas do título e do status e a linha
 // colorida do jogador no topo.
 export const HUD_LAYOUT = Object.freeze({ padding: 0.012, title: 0.045, status: 0.035, stripe: 0.006 });
+// Espaço entre o painel e o cartão do PokeProf em campo, acima dele (m).
+export const HUD_CARD_GAP = 0.015;
 // Distância máxima da pinça até o botão para apertá-lo (mão rastreada).
 export const HUD_PINCH_REACH = 0.05;
 // Quanto tempo a mensagem de status fica na tela (ms).

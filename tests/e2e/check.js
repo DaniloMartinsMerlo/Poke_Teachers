@@ -231,6 +231,17 @@ async function run() {
   const pokemonsOf = (p) => document.querySelectorAll(`.released-pokemon[data-player="${p}"]`).length;
   await drop(p1Rack.balls[0], 0, 4);
   out.p1FirstReleased = pokemonsOf("p1");
+  // Em campo: cartão acima do HUD; a prévia na bola não aparece mais.
+  const fieldCard = () => hud.querySelector(".hud-field-card");
+  out.hudFieldCardShown = !!fieldCard();
+  out.hudFieldCardAbovePanel = fieldCard()
+    ? fieldCard().object3D.position.y > hud.querySelector("a-plane").getAttribute("height") / 2
+    : false;
+  const p1Ball = p1Rack.balls[0];
+  p1Ball.emit("raycaster-intersected", { el: cursor }); await frame();
+  out.previewHiddenWhileOnField = !p1Ball.components["pokemon-preview"].card.object3D.visible;
+  p1Ball.components.pokeprof.damage(25); await frame();
+  out.hudFieldCardHp = fieldCard()?.querySelector(".hp-text").getAttribute("value");
   out.ownerMarked = !!document.querySelector('.released-pokemon[data-player="p1"] .owner-ring');
   await drop(p1Rack.balls[1], 1, 4);
   out.p1SecondBlocked = pokemonsOf("p1");
@@ -245,8 +256,8 @@ async function run() {
   // Atributos e vida: card mostra cheio; ataque tira vida do adversário
   // e o card dele mostra a diferença; reset cura.
   const p2Ball = p2Rack.balls[0];
-  const p2Card = p2Ball.components["pokemon-preview"];
-  p2Card.refresh();
+  const p2Card = p2Ball.components["pokemon-preview"].cardView;
+  p2Card.refresh(p2Ball.components.pokeprof.prof);
   const hpText = () => p2Card.hpText.getAttribute("value");
   out.cardHpFull = hpText();
   out.cardStats = p2Card.statsText.getAttribute("value");
@@ -263,6 +274,10 @@ async function run() {
   out.switchArcPeakY = +peakY.toFixed(2);
   out.switchBallBackInSlotM = +p1Rack.balls[0].object3D.position.distanceTo(p1Rack.slots[0]).toFixed(3);
   out.p1AfterSwitch = pokemonsOf("p1");
+  out.hudFieldCardGoneAfterSwitch = !fieldCard();
+  await frame();
+  out.previewBackAfterSwitch = p1Ball.components["pokemon-preview"].card.object3D.visible;
+  p1Ball.emit("raycaster-intersected-cleared", { el: cursor });
   out.p2StillOut = pokemonsOf("p2");
   await drop(p1Rack.balls[2], 0, 4);
   out.p1CanSendAnotherAfterSwitch = pokemonsOf("p1");

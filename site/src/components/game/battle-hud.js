@@ -4,6 +4,7 @@ import {
   HUD_ACTIONS,
   HUD_ANGLE_DEG,
   HUD_BUTTON,
+  HUD_CARD_GAP,
   HUD_COLORS,
   HUD_DISTANCE,
   HUD_DROP,
@@ -23,6 +24,7 @@ import { angleBetween, approachAngle } from "../../domain/battle.js";
 import { chooseHudOption, pullWithin, pullWithin1D } from "../../domain/hud.js";
 import { frameSeconds } from "../../utils/time.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
+import { PokeprofCard } from "./pokeprof-card.js";
 
 const PAGE_TITLES = Object.freeze({
   [HUD_PAGES.MAIN]: "Batalha",
@@ -44,6 +46,9 @@ const BACK_OPTION = Object.freeze({ action: HUD_ACTIONS.BACK, label: "Voltar" })
 // PokeProf e Desistir. Ataque e PowerUps abrem páginas com 4 opções e
 // "Voltar". Cada escolha vira o evento HUD_ACTION na cena; "Trocar" também
 // pede RECALL_REQUESTED (o suporte traz a bola de volta).
+//
+// PokeProf do jogador em campo: o cartão dele (foto, vida, atributos) fica
+// logo acima do painel e acompanha a vida ao vivo; some ao recolher.
 //
 // Deve ficar dentro do rig do jogador no HTML.
 AFRAME.registerComponent("battle-hud", {
@@ -81,6 +86,22 @@ AFRAME.registerComponent("battle-hud", {
       }
     };
     this.el.sceneEl.addEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
+    // Cartão do PokeProf em campo (acima do painel).
+    this.fieldCard = null;
+    this.fieldBall = null;
+    this.onFieldChanged = () => this.fieldCard?.refresh(this.fieldBall?.components.pokeprof?.prof);
+    this.onSentOut = ({ detail }) => {
+      if (detail.player === this.data.player) {
+        this.showFieldCard(detail.ball);
+      }
+    };
+    this.onRecalled = ({ detail }) => {
+      if (detail.player === this.data.player && detail.ball === this.fieldBall) {
+        this.hideFieldCard();
+      }
+    };
+    this.el.sceneEl.addEventListener(EVENTS.POKEMON_RELEASED, this.onSentOut);
+    this.el.sceneEl.addEventListener(EVENTS.POKEMON_RECALLED, this.onRecalled);
     this.onPinch = (event) => this.pressAtPinch(event);
     // Entrou/saiu do VR: a cabeça "pula"; reancora na nova posição.
     this.onViewChanged = () => { this.anchor = null; };
@@ -136,6 +157,35 @@ AFRAME.registerComponent("battle-hud", {
     this.title.object3D.position.set(0, top - padding - title / 2, 0.002);
     this.list.object3D.position.set(0, top - padding - title - height / 2, 0.003);
     this.status.object3D.position.set(0, -top + padding + status / 2, 0.002);
+    this.panelTop = top;
+    this.placeFieldCard();
+  },
+
+  showFieldCard(ball) {
+    this.hideFieldCard();
+    const name = ball.components.pokeprof?.prof.name || "";
+    this.fieldBall = ball;
+    this.fieldCard = new PokeprofCard(name, "horizontal", { width: this.panelWidth });
+    this.fieldCard.el.classList.add("hud-field-card");
+    this.el.appendChild(this.fieldCard.el);
+    this.placeFieldCard();
+    this.onFieldChanged();
+    ball.addEventListener(EVENTS.POKEPROF_CHANGED, this.onFieldChanged);
+  },
+
+  hideFieldCard() {
+    this.fieldBall?.removeEventListener(EVENTS.POKEPROF_CHANGED, this.onFieldChanged);
+    this.fieldCard?.remove();
+    this.fieldCard = null;
+    this.fieldBall = null;
+  },
+
+  // Logo acima do painel (a altura do painel muda com a página).
+  placeFieldCard() {
+    if (this.fieldCard && this.panelTop !== undefined) {
+      const y = this.panelTop + HUD_CARD_GAP + this.fieldCard.height() / 2;
+      this.fieldCard.el.object3D.position.set(0, y, 0);
+    }
   },
 
   optionsOf(page) {
@@ -326,6 +376,9 @@ AFRAME.registerComponent("battle-hud", {
     clearTimeout(this.statusTimer);
     this.el.sceneEl.removeEventListener(EVENTS.SEND_OUT_BLOCKED, this.onBlocked);
     this.el.sceneEl.removeEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
+    this.el.sceneEl.removeEventListener(EVENTS.POKEMON_RELEASED, this.onSentOut);
+    this.el.sceneEl.removeEventListener(EVENTS.POKEMON_RECALLED, this.onRecalled);
+    this.hideFieldCard();
     this.el.sceneEl.removeEventListener("enter-vr", this.onViewChanged);
     this.el.sceneEl.removeEventListener("exit-vr", this.onViewChanged);
     (this.hands || []).forEach((hand) => hand.removeEventListener("pinchstarted", this.onPinch));

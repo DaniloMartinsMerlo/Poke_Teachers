@@ -255,3 +255,24 @@ professores.
   recolher PokeProf desmaiado, card do PokeProf em campo acima do HUD) e
   as pendências espalhadas nas entradas anteriores deste histórico. A
   partir daqui, pendências novas vão para lá.
+
+## 2026-11-18 — card do PokeProf em campo acima do HUD
+
+### Mudanças
+- `PokeprofCard` (`components/game/pokeprof-card.js`): o cartão (foto,
+  nome, barra e número de vida, ATQ/DEF/VEL, "Forte contra") virou uma
+  peça reutilizável com dois formatos: `vertical` (prévia sobre a
+  pokébola) e `horizontal` (acima do HUD, com a largura do painel).
+- `battle-hud`: quando o PokeProf do jogador sai da bola, o cartão
+  horizontal aparece logo acima do painel (acompanha a altura do painel
+  em cada página) e atualiza a vida ao vivo; some ao recolher.
+- `pokemon-preview`: não aparece mais enquanto o professor está em campo.
+
+### Decisões e motivos
+- Formato horizontal acima do HUD: o vertical somado ao painel ficaria
+  com ~65 cm de altura, obrigando a olhar para cima.
+- A barra de vida é ajustada por `setAttribute` (posição/escala), não
+  por `object3D`: no 1º `refresh` a entidade ainda não carregou e o
+  A-Frame reaplicaria a posição do atributo ao carregar. E a altura da
+  barra fica guardada na classe: antes de carregar, `getAttribute`
+  devolve a string crua.

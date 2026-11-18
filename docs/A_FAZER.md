@@ -8,7 +8,7 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
 
 ## Prioridade (pedidos do professor/time)
 
-- [ ] **Card do PokeProf em campo ao lado do jogador.** Enquanto o
+- [x] **Card do PokeProf em campo ao lado do jogador.** Enquanto o
   PokeProf está em campo, o card (foto, vida, atributos) para de aparecer
   sobre a pokébola e passa a ficar fixo ao lado do jogador, acima do HUD,
   seguindo o corpo como o HUD. Volta a aparecer na bola quando ele é

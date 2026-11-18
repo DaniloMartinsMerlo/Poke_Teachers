@@ -23,6 +23,31 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   PokeProf com maior velocidade age primeiro (`turnOrder`, em
   `site/src/domain/combat.js`, já pronto e testado). Hoje o ataque tira
   vida na hora, sem turno (provisório, `site/src/systems/battle.js`).
+- [ ] **Power-ups.** ⚠️ Depende do **sistema de turnos**: só começar
+  depois dele. Hoje os 4 botões só mostram mensagem
+  (`POWERUPS` em `site/src/config/battle.js`).
+  - **Efeitos** (um por botão; valores em `config/battle.js` para
+    balancear):
+    - **Velocidade +%**: alta o bastante para um PokeProf mais lento
+      passar o adversário e ganhar uma vantagem temporária, inclusive o
+      que está em desvantagem no ciclo. Ex. com os números atuais:
+      +80% leva Murilo (40) a 72, acima de Rodinha (70).
+    - **Ataque +%.**
+    - **Defesa +%.**
+    - **Cura** (quantidade ou % da vida máxima, sem passar do máximo).
+  - **Tradeoff:** usar um power-up gasta a ação do turno (não ataca). Se
+    o oponente atacar nesse mesmo turno, o dano é calculado **sem** o
+    power-up; ele só passa a valer no turno seguinte.
+  - **Duração:** 1 turno (o seguinte ao uso); depois volta ao normal.
+  - Mostrar no card do PokeProf (acima do HUD) que há um power-up ativo
+    e o atributo alterado.
+  - A definir: a cura também espera o próximo turno ou vale na hora?
+    Pode usar o mesmo power-up em turnos seguidos? Os 4 nomes atuais
+    (Ponto Extra, Intervalo, Cola Liberada, Feriado) ficam com qual
+    efeito?
+  - Testes de domínio: ordem do turno com velocidade aumentada, dano com
+    ataque/defesa aumentados, expiração após 1 turno, power-up que não
+    vale no turno em que foi usado.
 - [ ] **PokeProf com HP zerado volta para a pokébola.** Ao desmaiar,
   recolher com a mesma animação do "Trocar PokeProf" (bola voa de volta
   ao suporte). Definir se a bola de um desmaiado pode ser jogada de novo
@@ -31,7 +56,6 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
 
 ## Batalha
 
-- [ ] Efeito dos **power-ups** (hoje só mostram mensagem).
 - [ ] **Desistir** (hoje não faz nada).
 - [ ] HUD do **jogador 2** e jogador **CPU** (`battle-hud` já aceita
   `player: p2`; `control: "cpu"` em `config/players.js` ainda não faz

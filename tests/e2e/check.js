@@ -242,6 +242,19 @@ async function run() {
   out.p2Released = pokemonsOf("p2");
   const ringColor = (p) => document.querySelector(`.released-pokemon[data-player="${p}"] .owner-ring`)?.getAttribute("material").color;
   out.ownerColorsDiffer = ringColor("p1") !== ringColor("p2");
+  // Atributos e vida: card mostra cheio; ataque tira vida do adversário
+  // e o card dele mostra a diferença; reset cura.
+  const p2Ball = p2Rack.balls[0];
+  const p2Card = p2Ball.components["pokemon-preview"];
+  p2Card.refresh();
+  const hpText = () => p2Card.hpText.getAttribute("value");
+  out.cardHpFull = hpText();
+  out.cardStats = p2Card.statsText.getAttribute("value");
+  await press("attack");
+  await press("prova-surpresa");
+  out.attackStatus = hud.querySelector(".hud-status").getAttribute("value");
+  out.cardHpAfterAttack = hpText();
+  out.hpBarScale = +p2Card.hpBar.object3D.scale.x.toFixed(2);
   await press("switch");
   out.switchStatus = hud.querySelector(".hud-status").getAttribute("value");
   out.switchBallReturning = p1Rack.balls[0].hasAttribute("data-returning");
@@ -253,6 +266,8 @@ async function run() {
   out.p2StillOut = pokemonsOf("p2");
   await drop(p1Rack.balls[2], 0, 4);
   out.p1CanSendAnotherAfterSwitch = pokemonsOf("p1");
+  scene.emit("gamereset"); await frame();
+  out.cardHpAfterReset = hpText();
   out.errors = errors;
   report(out);
 }

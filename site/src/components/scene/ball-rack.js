@@ -129,6 +129,8 @@ AFRAME.registerComponent("ball-rack", {
         "cursor-grabber": "",
         "data-player": player,
       });
+      // Atributos e vida antes da prévia, que os mostra.
+      ball.setAttribute("pokeprof", { name: pokemon[index] || model });
       if (pokemon[index]) {
         ball.setAttribute("pokemon-preview", { name: pokemon[index] });
       }

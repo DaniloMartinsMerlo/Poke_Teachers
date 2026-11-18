@@ -11,7 +11,7 @@ import {
   RECALL_FLASH_COLOR,
   RELEASE_SURFACE,
 } from "../../config/pokemon.js";
-import { TEACHER_IMAGES } from "../../config/teachers.js";
+import { TEACHER_NAMES } from "../../config/teachers.js";
 import { pickByName, releasesPokemon } from "../../domain/landing.js";
 import { createEntity, vec3 } from "../../utils/entity.js";
 
@@ -73,7 +73,7 @@ AFRAME.registerComponent("pokemon-release", {
     const x = this.ballPosition.x + Math.sin(yaw) * this.data.offset;
     const z = this.ballPosition.z + Math.cos(yaw) * this.data.offset;
 
-    const look = pickByName(this.data.name, POKEMON_LOOKS, Object.keys(TEACHER_IMAGES));
+    const look = pickByName(this.data.name, POKEMON_LOOKS, TEACHER_NAMES);
     const owner = playerInfo(player);
     this.tag = this.buildOwnerTag(owner);
     this.creature = createEntity("a-entity", {

@@ -1,6 +1,6 @@
 import { EVENTS, HUD_BUTTON_CLASS } from "../../config/constants.js";
+import { ATTACKS, POWERUPS } from "../../config/battle.js";
 import {
-  ATTACKS,
   HUD_ACTIONS,
   HUD_ANGLE_DEG,
   HUD_BUTTON,
@@ -17,7 +17,6 @@ import {
   HUD_RECENTER_RATE,
   HUD_STATUS_MS,
   MAIN_OPTIONS,
-  POWERUPS,
 } from "../../config/hud.js";
 import { playerInfo } from "../../config/players.js";
 import { angleBetween, approachAngle } from "../../domain/battle.js";
@@ -75,6 +74,13 @@ AFRAME.registerComponent("battle-hud", {
         this.setStatus("Apenas 1 PokeProf por vez!");
       }
     };
+    // Ataque acertou: mostra o dano no status.
+    this.onDamaged = ({ detail }) => {
+      if (detail.attackerPlayer === this.data.player) {
+        this.setStatus(`${detail.attacker} usou ${detail.attackLabel}! -${detail.damage} HP`);
+      }
+    };
+    this.el.sceneEl.addEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
     this.onPinch = (event) => this.pressAtPinch(event);
     // Entrou/saiu do VR: a cabeça "pula"; reancora na nova posição.
     this.onViewChanged = () => { this.anchor = null; };
@@ -200,8 +206,16 @@ AFRAME.registerComponent("battle-hud", {
     const sceneEl = this.el.sceneEl;
     const activeBall = sceneEl.systems.battle.activeBall(player);
     const activeName = activeBall?.components["pokemon-release"]?.data.name;
+    // Status padrão antes do evento: se o ataque acertar, o sistema de
+    // batalha emite POKEMON_DAMAGED e o status é trocado pelo dano.
+    this.defaultStatus(emit, option, activeBall, activeName);
     sceneEl.emit(EVENTS.HUD_ACTION, { player, ...emit }, false);
+    if (emit.action === HUD_ACTIONS.SWITCH && activeBall) {
+      sceneEl.emit(EVENTS.RECALL_REQUESTED, { player }, false);
+    }
+  },
 
+  defaultStatus(emit, option, activeBall, activeName) {
     switch (emit.action) {
       case HUD_ACTIONS.SWITCH:
         if (!activeBall) {
@@ -209,10 +223,15 @@ AFRAME.registerComponent("battle-hud", {
           return;
         }
         this.setStatus(`Volte, ${activeName}!`);
-        sceneEl.emit(EVENTS.RECALL_REQUESTED, { player }, false);
         return;
       case HUD_ACTIONS.ATTACK:
-        this.setStatus(activeBall ? `${activeName} usou ${option.label}!` : "Nenhum PokeProf em campo");
+        if (!activeBall) {
+          this.setStatus("Nenhum PokeProf em campo");
+        } else if (activeBall.components.pokeprof?.prof.isFainted()) {
+          this.setStatus(`${activeName} esta desmaiado`);
+        } else {
+          this.setStatus(`${activeName} usou ${option.label}! Sem alvo`);
+        }
         return;
       case HUD_ACTIONS.POWERUP:
         this.setStatus(`${option.label} ativado!`);
@@ -306,6 +325,7 @@ AFRAME.registerComponent("battle-hud", {
   remove() {
     clearTimeout(this.statusTimer);
     this.el.sceneEl.removeEventListener(EVENTS.SEND_OUT_BLOCKED, this.onBlocked);
+    this.el.sceneEl.removeEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
     this.el.sceneEl.removeEventListener("enter-vr", this.onViewChanged);
     this.el.sceneEl.removeEventListener("exit-vr", this.onViewChanged);
     (this.hands || []).forEach((hand) => hand.removeEventListener("pinchstarted", this.onPinch));

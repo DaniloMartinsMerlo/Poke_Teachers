@@ -47,6 +47,10 @@ export const EVENTS = Object.freeze({
   RECALL_REQUESTED: "recallrequested",
   // Escolha no HUD (detail: player, action, id).
   HUD_ACTION: "hudaction",
+  // Vida do PokeProf de uma bola mudou (emitido na própria bola).
+  POKEPROF_CHANGED: "pokeprofchanged",
+  // Um ataque acertou (detail: attackerPlayer, attacker, defender, damage).
+  POKEMON_DAMAGED: "pokemondamaged",
 });
 
 // Quadros muito longos (aba em segundo plano) não podem gerar saltos.

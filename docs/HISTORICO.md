@@ -212,3 +212,39 @@ professores.
   mantém o desvio lateral da bola, para não "pular" para o raio.
 - Mouse continua com `moveAlongHoldLine`: o cursor sai do centro da
   câmera, então lá as duas linhas coincidem.
+
+## 2026-11-18 — atributos dos PokeProfs, vida no card
+
+### Mudanças
+- **Atributos base** em `config/teachers.js` (arquivo de balanceamento):
+  `hp`, `attack`, `defense`, `speed` por professor + `BEATS`, o ciclo de
+  vantagem Fabi > Murilo > Rodinha > Fabi.
+- **Regras** em `config/battle.js` (fórmula de dano, multiplicadores de
+  vantagem 1,5 / 0,67, ataques com `power`; ataques e power-ups saíram de
+  `config/hud.js`).
+- **Domínio:** classe `Pokeprof` (`domain/pokeprof.js`: vida atual,
+  `takeDamage`, `heal`, `isFainted`, `hpRatio`) e `domain/combat.js`
+  (`calculateDamage`, `advantageMultiplier`, `turnOrder` por velocidade,
+  `simulateDuel`, `isAdvantageCycle`).
+- **Componente `pokeprof`** em cada pokébola (instância própria: o mesmo
+  professor nos dois lados tem vidas separadas). Reset do jogo cura todos.
+- **Card do professor** mostra barra de vida (verde/amarela/vermelha),
+  "HP atual/máx" (ou "Desmaiado"), ATQ/DEF/VEL e "Forte contra X";
+  atualiza quando a vida muda. Subiu para 55 cm acima da bola.
+- **Ataque provisório:** escolher um ataque no HUD com os dois jogadores
+  em campo tira vida do PokeProf adversário na hora; o HUD mostra o dano.
+
+### Decisões e motivos
+- Defesa com retorno decrescente, `100 / (100 + defesa)`: nunca zera o
+  dano, não precisa de teto como uma porcentagem direta, e "defesa 100 =
+  metade do dano" é fácil de ajustar de cabeça.
+- Teste "balanceamento" (`npm test`) simula os duelos 1x1 com um ataque
+  médio (`BALANCE_TEST_POWER`) e falha se o ciclo 1 > 2 > 3 > 1 quebrar
+  depois de mudar os números.
+- `turnOrder` (velocidade) já existe e está testado, mas ainda não é
+  usado: falta o sistema de turnos.
+
+### Pendências
+- Sistema de turnos (os dois escolhem, o mais rápido ataca primeiro).
+- O que acontece ao desmaiar (trocar obrigatoriamente, fim de jogo).
+- Power-ups, Desistir, HUD do jogador 2 / CPU.

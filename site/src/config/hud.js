@@ -55,17 +55,4 @@ export const MAIN_OPTIONS = Object.freeze([
   { action: HUD_ACTIONS.GIVE_UP, label: "Desistir" },
 ]);
 
-// Ataques e power-ups (por enquanto só nomes; o efeito vem depois).
-export const ATTACKS = Object.freeze([
-  { id: "prova-surpresa", label: "Prova Surpresa" },
-  { id: "chamada-oral", label: "Chamada Oral" },
-  { id: "trabalho-em-grupo", label: "Trabalho em Grupo" },
-  { id: "reprovacao", label: "Reprovar" },
-]);
-
-export const POWERUPS = Object.freeze([
-  { id: "ponto-extra", label: "Ponto Extra" },
-  { id: "intervalo", label: "Intervalo" },
-  { id: "cola-liberada", label: "Cola Liberada" },
-  { id: "feriado", label: "Feriado" },
-]);
+// Ataques e power-ups do menu: config/battle.js.

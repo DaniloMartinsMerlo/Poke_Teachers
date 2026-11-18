@@ -152,3 +152,58 @@ test("carretilha anda paralela ao laser inclinado, mantendo o desvio", () => {
   const close = reelAlongRay(start, origin, dir, -5, 0.15, 15);
   assert.ok(Math.abs(along(close) - 0.15) < 1e-9);
 });
+
+import { Pokeprof } from "../site/src/domain/pokeprof.js";
+import {
+  advantageMultiplier, calculateDamage, isAdvantageCycle, simulateDuel, turnOrder,
+} from "../site/src/domain/combat.js";
+import { BEATS, TEACHER_NAMES, teacherStats } from "../site/src/config/teachers.js";
+import { BALANCE_TEST_POWER, DAMAGE_RULES } from "../site/src/config/battle.js";
+
+test("PokeProf: dano não passa de 0, cura não passa do máximo", () => {
+  const p = new Pokeprof("X", { hp: 100, attack: 50, defense: 50, speed: 50 });
+  assert.equal(p.takeDamage(30), 30);
+  assert.equal(p.hp, 70);
+  assert.equal(p.hpRatio(), 0.7);
+  assert.equal(p.takeDamage(500), 70);
+  assert.ok(p.isFainted());
+  assert.equal(p.heal(), 100);
+  assert.equal(p.hp, 100);
+});
+
+test("dano: defesa reduz com retorno decrescente, vantagem multiplica", () => {
+  const rules = { attackScale: 50, defenseScale: 100, strong: 1.5, weak: 0.5, minDamage: 1 };
+  const atk = { name: "A", stats: { attack: 50 } };
+  const def = (defense, name = "B") => ({ name, stats: { defense } });
+  assert.equal(calculateDamage(atk, def(0), 40, {}, rules), 40);
+  assert.equal(calculateDamage(atk, def(100), 40, {}, rules), 20);
+  assert.equal(calculateDamage(atk, def(100), 40, { A: "B" }, rules), 30);
+  assert.equal(calculateDamage(atk, def(100), 40, { B: "A" }, rules), 10);
+  assert.equal(calculateDamage(atk, def(100000), 40, {}, rules), 1);
+  assert.equal(advantageMultiplier("A", "C", { A: "B" }, rules), 1);
+});
+
+test("velocidade: o mais rápido ataca primeiro; empate sorteia", () => {
+  const fast = { stats: { speed: 70 } };
+  const slow = { stats: { speed: 40 } };
+  assert.deepEqual(turnOrder(slow, fast), [fast, slow]);
+  const tieA = { stats: { speed: 50 } };
+  const tieB = { stats: { speed: 50 } };
+  assert.deepEqual(turnOrder(tieA, tieB, () => 0.1), [tieA, tieB]);
+  assert.deepEqual(turnOrder(tieA, tieB, () => 0.9), [tieB, tieA]);
+});
+
+test("config: vantagens formam o ciclo 1 > 2 > 3 > 1", () => {
+  assert.ok(isAdvantageCycle(BEATS, TEACHER_NAMES));
+  assert.equal(isAdvantageCycle({ A: "B", B: "A", C: "A" }, ["A", "B", "C"]), false);
+});
+
+// Rode `npm test` depois de mudar config/teachers.js ou config/battle.js.
+for (const winner of TEACHER_NAMES) {
+  const loser = BEATS[winner];
+  test(`balanceamento: ${winner} vence ${loser} nos dois sentidos`, () => {
+    const args = [BALANCE_TEST_POWER, BEATS, DAMAGE_RULES];
+    assert.equal(simulateDuel(winner, teacherStats(winner), loser, teacherStats(loser), ...args), winner);
+    assert.equal(simulateDuel(loser, teacherStats(loser), winner, teacherStats(winner), ...args), winner);
+  });
+}

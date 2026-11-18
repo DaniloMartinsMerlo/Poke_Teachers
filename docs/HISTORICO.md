@@ -276,3 +276,13 @@ professores.
   A-Frame reaplicaria a posição do atributo ao carregar. E a altura da
   barra fica guardada na classe: antes de carregar, `getAttribute`
   devolve a string crua.
+
+### Ajuste no mesmo dia — cartão do adversário
+- O HUD também mostra o cartão do PokeProf do adversário em campo,
+  empilhado acima do cartão do jogador (como nas batalhas Pokémon: o
+  adversário em cima). Sem o PokeProf do jogador, o do adversário desce
+  para logo acima do painel.
+- `PokeprofCard` aceita `owner`: rótulo ao lado do nome ("Rodinha (J2)")
+  e faixa na borda esquerda com a cor do dono.
+- Com os dois cartões, a pilha passa ~17 cm acima da altura dos olhos;
+  se incomodar no Quest, aumentar `HUD_DROP` em `config/hud.js`.

@@ -4,6 +4,8 @@ import { createEntity, vec3 } from "../../utils/entity.js";
 const HP_COLORS = Object.freeze({ high: "#4cd964", mid: "#ffd23f", low: "#ff3b30", empty: "#444444" });
 const BACKGROUND = "#222222";
 const STRONG_COLOR = "#9fd3ff";
+// Faixa na borda esquerda com a cor do dono (m).
+const OWNER_STRIPE = 0.006;
 
 // Medidas de cada formato (m). Textos sem acento (fonte do A-Frame).
 //   vertical:   foto em cima, dados embaixo — prévia sobre a pokébola.
@@ -31,12 +33,15 @@ export class PokeprofCard {
   /**
    * @param {string} name professor
    * @param {"vertical" | "horizontal"} layout
-   * @param {{width?: number}} [options] largura do formato horizontal
+   * @param {{width?: number, owner?: {label: string, color: string}}} [options]
+   *   width: largura do formato horizontal; owner: dono (rótulo ao lado
+   *   do nome e faixa na cor dele, para distinguir os jogadores)
    */
   constructor(name, layout = "vertical", options = {}) {
     this.name = name;
     this.layout = layout;
     this.width = options.width || LAYOUTS.horizontal.width;
+    this.owner = options.owner || null;
     this.el = layout === "horizontal" ? this.buildHorizontal() : this.buildVertical();
   }
 
@@ -93,7 +98,7 @@ export class PokeprofCard {
       height: this.height(),
       centerY: 0,
       image: { x: -width / 2 + padding + image / 2, size: image },
-      name: row(0.045, this.name, { "wrap-count": 14 }),
+      name: row(0.045, this.owner ? `${this.name} (${this.owner.label})` : this.name, { "wrap-count": 14 }),
       barY: 0.021,
       barHeight: 0.014,
       hpText: row(-0.006, ""),
@@ -114,11 +119,18 @@ export class PokeprofCard {
     this.hpText.classList.add("hp-text");
     this.statsText = parts.statsText;
     this.statsText.classList.add("stats-text");
+    const ownerStripe = this.owner ? [createEntity("a-plane", {
+      class: "owner-stripe",
+      position: vec3(-parts.width / 2 + OWNER_STRIPE / 2, parts.centerY, -0.001),
+      width: OWNER_STRIPE, height: parts.height,
+      material: `color: ${this.owner.color}; shader: flat`,
+    })] : [];
     return createEntity("a-entity", { class: `pokeprof-card pokeprof-card-${this.layout}` }, [
       createEntity("a-plane", {
         position: vec3(0, parts.centerY, -0.002),
         width: parts.width, height: parts.height, color: BACKGROUND,
       }),
+      ...ownerStripe,
       createEntity("a-image", {
         src: teacherImage(this.name),
         position: vec3(parts.image.x, 0, 0),

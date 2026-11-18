@@ -58,6 +58,9 @@ AFRAME.registerComponent("battle-hud", {
 
   init() {
     this.page = HUD_PAGES.MAIN;
+    // Cartões dos PokeProfs em campo (acima do painel), por jogador:
+    // { card, ball, onChanged }.
+    this.fieldCards = new Map();
     this.buttons = [];
     // Âncora do corpo no espaço do rig: posição dos olhos e direção.
     this.anchor = null;
@@ -86,18 +89,10 @@ AFRAME.registerComponent("battle-hud", {
       }
     };
     this.el.sceneEl.addEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
-    // Cartão do PokeProf em campo (acima do painel).
-    this.fieldCard = null;
-    this.fieldBall = null;
-    this.onFieldChanged = () => this.fieldCard?.refresh(this.fieldBall?.components.pokeprof?.prof);
-    this.onSentOut = ({ detail }) => {
-      if (detail.player === this.data.player) {
-        this.showFieldCard(detail.ball);
-      }
-    };
+    this.onSentOut = ({ detail }) => this.showFieldCard(detail.player, detail.ball);
     this.onRecalled = ({ detail }) => {
-      if (detail.player === this.data.player && detail.ball === this.fieldBall) {
-        this.hideFieldCard();
+      if (this.fieldCards.get(detail.player)?.ball === detail.ball) {
+        this.hideFieldCard(detail.player);
       }
     };
     this.el.sceneEl.addEventListener(EVENTS.POKEMON_RELEASED, this.onSentOut);
@@ -158,34 +153,53 @@ AFRAME.registerComponent("battle-hud", {
     this.list.object3D.position.set(0, top - padding - title - height / 2, 0.003);
     this.status.object3D.position.set(0, -top + padding + status / 2, 0.002);
     this.panelTop = top;
-    this.placeFieldCard();
+    this.placeFieldCards();
   },
 
-  showFieldCard(ball) {
-    this.hideFieldCard();
-    const name = ball.components.pokeprof?.prof.name || "";
-    this.fieldBall = ball;
-    this.fieldCard = new PokeprofCard(name, "horizontal", { width: this.panelWidth });
-    this.fieldCard.el.classList.add("hud-field-card");
-    this.el.appendChild(this.fieldCard.el);
-    this.placeFieldCard();
-    this.onFieldChanged();
-    ball.addEventListener(EVENTS.POKEPROF_CHANGED, this.onFieldChanged);
+  // Cartão do PokeProf de `player` (o do jogador ou o adversário).
+  showFieldCard(player, ball) {
+    this.hideFieldCard(player);
+    const prof = ball.components.pokeprof?.prof;
+    const mine = player === this.data.player;
+    const card = new PokeprofCard(prof?.name || "", "horizontal", {
+      width: this.panelWidth, owner: playerInfo(player),
+    });
+    card.el.classList.add("hud-field-card", mine ? "hud-field-card-mine" : "hud-field-card-opponent");
+    card.el.dataset.player = player;
+    const onChanged = () => card.refresh(ball.components.pokeprof?.prof);
+    ball.addEventListener(EVENTS.POKEPROF_CHANGED, onChanged);
+    this.fieldCards.set(player, { card, ball, onChanged });
+    this.el.appendChild(card.el);
+    onChanged();
+    this.placeFieldCards();
   },
 
-  hideFieldCard() {
-    this.fieldBall?.removeEventListener(EVENTS.POKEPROF_CHANGED, this.onFieldChanged);
-    this.fieldCard?.remove();
-    this.fieldCard = null;
-    this.fieldBall = null;
-  },
-
-  // Logo acima do painel (a altura do painel muda com a página).
-  placeFieldCard() {
-    if (this.fieldCard && this.panelTop !== undefined) {
-      const y = this.panelTop + HUD_CARD_GAP + this.fieldCard.height() / 2;
-      this.fieldCard.el.object3D.position.set(0, y, 0);
+  hideFieldCard(player) {
+    const entry = this.fieldCards.get(player);
+    if (!entry) {
+      return;
     }
+    entry.ball.removeEventListener(EVENTS.POKEPROF_CHANGED, entry.onChanged);
+    entry.card.remove();
+    this.fieldCards.delete(player);
+    this.placeFieldCards();
+  },
+
+  // Empilha acima do painel: o do jogador embaixo, o adversário em cima
+  // (como nas batalhas Pokémon). A altura do painel muda com a página.
+  placeFieldCards() {
+    if (this.panelTop === undefined) {
+      return;
+    }
+    const mine = this.data.player;
+    const order = [...this.fieldCards.keys()].sort((a, b) => (a === mine ? -1 : b === mine ? 1 : 0));
+    let y = this.panelTop + HUD_CARD_GAP;
+    order.forEach((player) => {
+      const { card } = this.fieldCards.get(player);
+      // setAttribute: vale mesmo antes de a entidade carregar.
+      card.el.setAttribute("position", { x: 0, y: y + card.height() / 2, z: 0 });
+      y += card.height() + HUD_CARD_GAP;
+    });
   },
 
   optionsOf(page) {
@@ -378,7 +392,7 @@ AFRAME.registerComponent("battle-hud", {
     this.el.sceneEl.removeEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
     this.el.sceneEl.removeEventListener(EVENTS.POKEMON_RELEASED, this.onSentOut);
     this.el.sceneEl.removeEventListener(EVENTS.POKEMON_RECALLED, this.onRecalled);
-    this.hideFieldCard();
+    [...this.fieldCards.keys()].forEach((player) => this.hideFieldCard(player));
     this.el.sceneEl.removeEventListener("enter-vr", this.onViewChanged);
     this.el.sceneEl.removeEventListener("exit-vr", this.onViewChanged);
     (this.hands || []).forEach((hand) => hand.removeEventListener("pinchstarted", this.onPinch));

@@ -232,7 +232,8 @@ async function run() {
   await drop(p1Rack.balls[0], 0, 4);
   out.p1FirstReleased = pokemonsOf("p1");
   // Em campo: cartão acima do HUD; a prévia na bola não aparece mais.
-  const fieldCard = () => hud.querySelector(".hud-field-card");
+  const fieldCard = () => hud.querySelector(".hud-field-card-mine");
+  const opponentCard = () => hud.querySelector(".hud-field-card-opponent");
   out.hudFieldCardShown = !!fieldCard();
   out.hudFieldCardAbovePanel = fieldCard()
     ? fieldCard().object3D.position.y > hud.querySelector("a-plane").getAttribute("height") / 2
@@ -242,6 +243,7 @@ async function run() {
   out.previewHiddenWhileOnField = !p1Ball.components["pokemon-preview"].card.object3D.visible;
   p1Ball.components.pokeprof.damage(25); await frame();
   out.hudFieldCardHp = fieldCard()?.querySelector(".hp-text").getAttribute("value");
+  out.hudFieldCardY = fieldCard()?.object3D.position.y;
   out.ownerMarked = !!document.querySelector('.released-pokemon[data-player="p1"] .owner-ring');
   await drop(p1Rack.balls[1], 1, 4);
   out.p1SecondBlocked = pokemonsOf("p1");
@@ -253,6 +255,12 @@ async function run() {
   out.p2Released = pokemonsOf("p2");
   const ringColor = (p) => document.querySelector(`.released-pokemon[data-player="${p}"] .owner-ring`)?.getAttribute("material").color;
   out.ownerColorsDiffer = ringColor("p1") !== ringColor("p2");
+  // Cartão do adversário também acima do HUD, empilhado acima do meu.
+  await frame();
+  out.opponentCardShown = !!opponentCard();
+  out.opponentCardAboveMine = opponentCard() && fieldCard()
+    ? opponentCard().object3D.position.y > fieldCard().object3D.position.y : false;
+  out.opponentCardLabel = opponentCard()?.querySelector("a-text").getAttribute("value");
   // Atributos e vida: card mostra cheio; ataque tira vida do adversário
   // e o card dele mostra a diferença; reset cura.
   const p2Ball = p2Rack.balls[0];
@@ -265,6 +273,7 @@ async function run() {
   await press("prova-surpresa");
   out.attackStatus = hud.querySelector(".hud-status").getAttribute("value");
   out.cardHpAfterAttack = hpText();
+  out.opponentCardHpAfterAttack = opponentCard()?.querySelector(".hp-text").getAttribute("value");
   out.hpBarScale = +p2Card.hpBar.object3D.scale.x.toFixed(2);
   await press("switch");
   out.switchStatus = hud.querySelector(".hud-status").getAttribute("value");
@@ -275,6 +284,9 @@ async function run() {
   out.switchBallBackInSlotM = +p1Rack.balls[0].object3D.position.distanceTo(p1Rack.slots[0]).toFixed(3);
   out.p1AfterSwitch = pokemonsOf("p1");
   out.hudFieldCardGoneAfterSwitch = !fieldCard();
+  out.opponentCardStaysAfterSwitch = !!opponentCard();
+  out.opponentCardMovedDown = opponentCard()
+    ? Math.abs(opponentCard().object3D.position.y - out.hudFieldCardY) < 1e-6 : false;
   await frame();
   out.previewBackAfterSwitch = p1Ball.components["pokemon-preview"].card.object3D.visible;
   p1Ball.emit("raycaster-intersected-cleared", { el: cursor });
@@ -283,6 +295,7 @@ async function run() {
   out.p1CanSendAnotherAfterSwitch = pokemonsOf("p1");
   scene.emit("gamereset"); await frame();
   out.cardHpAfterReset = hpText();
+  out.noCardsAfterReset = hud.querySelectorAll(".hud-field-card").length === 0;
   out.errors = errors;
   report(out);
 }

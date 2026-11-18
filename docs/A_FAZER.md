@@ -12,7 +12,8 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   PokeProf está em campo, o card (foto, vida, atributos) para de aparecer
   sobre a pokébola e passa a ficar fixo ao lado do jogador, acima do HUD,
   seguindo o corpo como o HUD. Volta a aparecer na bola quando ele é
-  recolhido.
+  recolhido. O do adversário também aparece, acima do
+  seu.
 - [ ] **README.** Desenvolver o `README.md`: o que é o projeto, como rodar
   (`docker compose up --build`, certificado HTTPS, acesso pelo Quest),
   controles (mãos, controles, teclado/mouse), estrutura de pastas, testes

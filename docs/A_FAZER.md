@@ -19,10 +19,43 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   controles (mãos, controles, teclado/mouse), estrutura de pastas, testes
   (`npm test`, `npm run test:e2e`) e onde balancear os professores
   (`site/src/config/teachers.js`).
-- [ ] **Sistema de turnos.** Os dois jogadores escolhem a ação no HUD; o
-  PokeProf com maior velocidade age primeiro (`turnOrder`, em
-  `site/src/domain/combat.js`, já pronto e testado). Hoje o ataque tira
-  vida na hora, sem turno (provisório, `site/src/systems/battle.js`).
+- [ ] **Sistema de turnos + adversário computador (CPU).** Fazer as duas
+  coisas juntas: uma precisa da outra.
+  - **Turnos:**
+    - Cada jogador escolhe **uma** ação por turno para o PokeProf em
+      campo: um ataque **ou** um power-up (HUD para o jogador; máquina de
+      estados para a CPU).
+    - **Espera:** nada é aplicado enquanto os dois não escolheram. Com as
+      duas escolhas feitas, o turno resolve: o PokeProf com maior
+      velocidade age primeiro (`turnOrder`, em
+      `site/src/domain/combat.js`, já pronto e testado); se o primeiro
+      derrubar o outro, o segundo não age.
+    - O HUD mostra "Aguardando adversario..." depois da escolha e trava
+      os botões de ação até o turno resolver.
+    - Hoje o ataque tira vida na hora, sem turno (provisório,
+      `site/src/systems/battle.js`): substituir.
+  - **CPU** (jogador `p2`, `control: "cpu"` em `config/players.js`) —
+    máquina de estados simples (estados e transições no `domain/`, sem
+    A-Frame, testável no Node; sorteio com `random` injetável):
+    1. **Aguardando:** espera o jogador lançar o primeiro PokeProf.
+    2. **Escolher PokeProf:** sorteia um entre os PokeProfs dela ainda de
+       pé (3 no início).
+    3. **Arremessar:** a bola sai do suporte da CPU **arremessada em arco,
+       como se fosse um jogador de verdade**, cai no campo e solta o
+       PokeProf normalmente (mesmo fluxo de pouso das bolas do jogador).
+    4. **Escolher ação:** sorteia entre atacar e usar power-up; depois
+       sorteia qual ataque / qual power-up. Pequena espera "pensando"
+       para não parecer instantâneo.
+    5. **Aguardar turno:** espera o turno resolver; volta para 4.
+    6. **PokeProf derrotado:** quando o dela desmaia (e volta para a
+       bola), volta para 2 e escolhe outro.
+    7. **Fim:** para quando alguém perde todos os PokeProfs (ver **Fim de
+       jogo**).
+  - Enquanto os **power-ups** não existirem, a CPU pode escolher power-up
+    e só "gastar" o turno, ou atacar sempre: decidir na implementação.
+  - Testes: domínio (transições da máquina de estados, resolução do turno
+    com ordem por velocidade, espera pelas duas escolhas) e e2e (partida
+    completa contra a CPU até alguém perder todos).
 - [ ] **Power-ups.** ⚠️ Depende do **sistema de turnos**: só começar
   depois dele. Hoje os 4 botões só mostram mensagem
   (`POWERUPS` em `site/src/config/battle.js`).
@@ -53,14 +86,14 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   ao suporte). A bola de um desmaiado não abre de novo até o reset.
 - [ ] **Fim de jogo.** O que acontece quando todos os PokeProfs de um
   jogador desmaiam: anunciar o vencedor (placar `arena-scoreboard`?),
-  travar o HUD, oferecer recomeçar.
+  travar o HUD, oferecer recomeçar. É o fim da partida contra a CPU
+  (item de turnos + CPU).
 
 ## Batalha
 
 - [ ] **Desistir** (hoje não faz nada).
-- [ ] HUD do **jogador 2** e jogador **CPU** (`battle-hud` já aceita
-  `player: p2`; `control: "cpu"` em `config/players.js` ainda não faz
-  nada).
+- [ ] HUD do **jogador 2** humano (`battle-hud` já aceita `player: p2`),
+  para dois jogadores. A CPU está no item de turnos.
 - [ ] Definir os professores do adversário quando houver mais imagens
   (hoje são os mesmos 3, em outra ordem).
 

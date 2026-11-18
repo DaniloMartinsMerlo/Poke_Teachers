@@ -39,6 +39,8 @@ AFRAME.registerComponent("physics-body", {
     this.wasHeld = false;
     // Encaixada no suporte: ignora impulsos até ser pega de novo.
     this.snapped = false;
+    // Movida por animação (bola voltando ao suporte): a física só segue.
+    this.scripted = false;
     this.landed = false;
     // Material da última superfície em que pousou (null = no ar/na mão).
     this.landedOn = null;
@@ -152,8 +154,24 @@ AFRAME.registerComponent("physics-body", {
     this.body.angularDamping = FLYING_ANGULAR_DAMPING;
   },
 
+  /**
+   * Passa a ser movida por animação: corpo cinemático, sem colisão, que
+   * acompanha a entidade até o próximo `placeAt`/`reset`.
+   */
+  beginScripted() {
+    this.scripted = true;
+    this.wasHeld = false;
+    this.snapped = false;
+    this.pendingImpulse.set(0, 0, 0);
+    this.body.type = CANNON.Body.KINEMATIC;
+    this.body.collisionResponse = false;
+    this.stop();
+    this.takeOff();
+  },
+
   /** Põe a bola parada em `position` (mundo), em pé; usada no encaixe. */
   placeAt(position) {
+    this.scripted = false;
     this.el.object3D.position.copy(position);
     this.el.object3D.quaternion.copy(this.startQuaternion);
     this.wasHeld = false;
@@ -173,6 +191,11 @@ AFRAME.registerComponent("physics-body", {
     }
     this.el.object3D.position.copy(this.startPosition);
     this.el.object3D.quaternion.copy(this.startQuaternion);
+    if (this.scripted) {
+      this.scripted = false;
+      this.body.type = CANNON.Body.DYNAMIC;
+      this.body.collisionResponse = true;
+    }
     this.syncBodyToEntity();
     this.stop();
     this.takeOff();
@@ -181,6 +204,10 @@ AFRAME.registerComponent("physics-body", {
 
   beforeStep(dt) {
     if (this.isStatic()) {
+      return;
+    }
+    if (this.scripted) {
+      this.syncBodyToEntity();
       return;
     }
     if (isHeld(this.el)) {
@@ -232,7 +259,7 @@ AFRAME.registerComponent("physics-body", {
   },
 
   afterStep() {
-    if (this.isStatic() || isHeld(this.el)) {
+    if (this.isStatic() || this.scripted || isHeld(this.el)) {
       return;
     }
     this.syncEntityToBody();

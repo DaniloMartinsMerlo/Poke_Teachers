@@ -3,7 +3,7 @@
 // Camadas (das mais internas para as mais externas):
 //   config/     constantes e parâmetros (sem lógica)
 //   domain/     regras puras do jogo, sem A-Frame (testáveis no Node)
-//   systems/    estado global da cena (física, modo de entrada)
+//   systems/    estado global da cena (física, modo de entrada, batalha)
 //   components/ adaptadores A-Frame: física, interação, locomoção,
 //               jogo, jogador e cenário
 //
@@ -12,6 +12,7 @@
 
 import "./systems/physics.js";
 import "./systems/input-mode.js";
+import "./systems/battle.js";
 
 import "./components/physics/physics-body.js";
 
@@ -30,6 +31,7 @@ import "./components/locomotion/vertical-controls.js";
 
 import "./components/game/controller-reset.js";
 import "./components/game/keyboard-reset.js";
+import "./components/game/battle-hud.js";
 
 import "./components/player/player-hand.js";
 import "./components/player/player-controller.js";

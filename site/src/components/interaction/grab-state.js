@@ -1,10 +1,12 @@
-import { EVENTS, GRABBABLE_SELECTOR, HELD_ATTRIBUTE } from "../../config/constants.js";
+import { EVENTS, GRABBABLE_SELECTOR, HELD_ATTRIBUTE, RETURNING_ATTRIBUTE } from "../../config/constants.js";
 import { findNearest } from "../../domain/nearest.js";
 
 // Estado "segurado" compartilhado por todos os pegadores (pinça, controle
 // e mouse): um objeto só pode estar em uma mão por vez.
 
 export const isHeld = (el) => el.hasAttribute(HELD_ATTRIBUTE);
+// Voltando sozinha para o suporte (animação): não pode ser pega.
+export const isReturning = (el) => el.hasAttribute(RETURNING_ATTRIBUTE);
 export const markHeld = (el) => el.setAttribute(HELD_ATTRIBUTE, "true");
 // Solta e avisa a cena (o evento sobe até ela): o suporte usa isso para
 // encaixar a bola. Quem solta deve chamar isto depois de devolver o objeto
@@ -29,10 +31,11 @@ export function moveAlongHoldLine(object3D, distance) {
   position.setLength(distance);
 }
 
-export const isFreeGrabbable = (el) => el.matches(GRABBABLE_SELECTOR) && !isHeld(el);
+export const isFreeGrabbable = (el) =>
+  el.matches(GRABBABLE_SELECTOR) && !isHeld(el) && !isReturning(el);
 
 export function freeGrabbables(sceneEl) {
-  return [...sceneEl.querySelectorAll(GRABBABLE_SELECTOR)].filter((el) => !isHeld(el));
+  return [...sceneEl.querySelectorAll(GRABBABLE_SELECTOR)].filter(isFreeGrabbable);
 }
 
 /** Objeto livre mais próximo de `origin` (posição de mundo), ou null. */

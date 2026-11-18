@@ -1,7 +1,7 @@
 import { MOUSE_CURSOR_ID } from "../../config/constants.js";
 import { HOLD_MAX_DISTANCE, HOLD_MIN_DISTANCE, WHEEL_METERS_PER_UNIT } from "../../config/grab.js";
 import { reelDistance } from "../../domain/reel.js";
-import { clearHeld, isHeld, markHeld, moveAlongHoldLine } from "./grab-state.js";
+import { clearHeld, isFreeGrabbable, markHeld, moveAlongHoldLine } from "./grab-state.js";
 
 const THROW_SPEED = 4.5;
 const THROW_LIFT = new THREE.Vector3(0, 1.2, 0);
@@ -33,7 +33,7 @@ AFRAME.registerComponent("cursor-grabber", {
 
   pickUp() {
     const camera = this.el.sceneEl.camera;
-    if (isHeld(this.el) || !camera) {
+    if (!isFreeGrabbable(this.el) || !camera) {
       return;
     }
     camera.el.object3D.attach(this.el.object3D);

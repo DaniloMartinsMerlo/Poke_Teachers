@@ -140,3 +140,46 @@ professores.
   mostrar quando a mão chega perto).
 - Janela à esquerda do jogador para escolher ataques e itens.
 - Definir os professores do adversário quando houver mais imagens.
+
+## 2026-11-18 — HUD de batalha, um PokeProf por jogador, donos
+
+### Mudanças
+- **HUD de batalha** em grade 2x2 (`components/game/battle-hud.js`, textos e medidas em
+  `config/hud.js`): painel à esquerda do jogador (38°, 75 cm, 30 cm abaixo
+  dos olhos) que segue a cabeça. Menu: Ataque, PowerUps, Trocar PokeProf,
+  Desistir. Ataque e PowerUps abrem páginas com 4 opções (2x2) + Voltar na
+  linha de baixo, largura inteira; o painel se ajusta às linhas de cada
+  página (sem espaço vazio); escolher
+  volta ao menu principal. Cada escolha emite `hudaction` na cena. Ataques
+  e power-ups ainda só mostram mensagem (sem efeito). Desistir não faz nada.
+- **Botões** respondem ao mouse (olhar + clique), ao laser do controle
+  (gatilho) e à pinça da mão rastreada encostada no botão (5 cm).
+- **Jogadores** (`config/players.js`): `ball-rack` e `battle-hud` têm
+  `player` (`p1` azul, `p2` vermelho). O pokémon solto ganha anel no chão
+  e plaquinha "J1 Fabi" na cor do dono; a faixa do tampo do suporte também
+  usa a cor.
+- **Um PokeProf por vez** (sistema `battle`, regra em `domain/battle.js`):
+  se o jogador já tem um em campo, a segunda bola não abre, o HUD avisa e a
+  bola volta voando para o suporte.
+- **Trocar PokeProf:** o pokémon encolhe com um clarão vermelho e a bola
+  volta em arco (sobe 1 m, gira 2 voltas, 0,9 s) até o encaixe dela (ou o
+  primeiro livre). No voo a bola é cinemática (`physics-body.beginScripted`)
+  e marcada `data-returning`: ninguém a pega no caminho.
+
+### Decisões e motivos
+- HUD filho da cena, não da câmera: posição imediata, mas o giro é
+  suavizado — painel preso ao rosto enjoa no VR.
+- Texto do botão é irmão do plano, não filho: o raycaster acusaria o
+  `a-text` em vez do botão.
+- Textos do HUD sem acento: a fonte padrão do A-Frame não tem os glifos.
+- Constantes de páginas/ações ficam em `config/hud.js` e o domínio importa
+  delas (config é a camada mais interna).
+
+### Pendências
+- Efeitos reais de ataques e power-ups; Desistir.
+- HUD do jogador 2 / CPU (o componente já aceita `player: p2`).
+- Validar no Quest 3: legibilidade do HUD, pinça nos botões, conforto do
+  acompanhamento.
+- No WSL sem `google-chrome`, o e2e roda com o Chrome do Windows via um
+  script `google-chrome` no PATH que chama `chrome.exe` (trocando
+  `--user-data-dir` por uma pasta do Windows).

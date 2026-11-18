@@ -156,6 +156,74 @@ async function run() {
   leftHand.emit("pinchended", {});
   for (let i = 0; i < 60; i++) await frame();
   out.snappedOffsetM = +snapBall.object3D.position.distanceTo(slot).toFixed(3);
+
+  // HUD de batalha: acompanha o jogador e navega entre páginas.
+  scene.emit("gamereset"); await frame(); await frame();
+  const hud = scene.querySelector("[battle-hud]");
+  const hudButtons = () => [...hud.querySelectorAll(".hud-button")];
+  const press = async (option) => { hudButtons().find((b) => b.dataset.option === option).emit("click"); await frame(); };
+  out.hudMainOptions = hudButtons().map((b) => b.dataset.option);
+  // Grade 2x2: duas colunas (x) e duas linhas (y) distintas.
+  const coords = (axis) => new Set(hudButtons().map((b) => +b.object3D.position[axis].toFixed(3))).size;
+  out.hudGrid2x2 = [coords("x"), coords("y")];
+  const hudPlane = () => hud.querySelector("a-plane").getAttribute("height");
+  out.hudMainPanelHeight = +(+hudPlane()).toFixed(3);
+  const hudBefore = hud.object3D.position.clone();
+  rig.object3D.position.x += 2; for (let i = 0; i < 3; i++) await frame();
+  out.hudFollowedM = +(hud.object3D.position.x - hudBefore.x).toFixed(2);
+  rig.object3D.position.x -= 2; await frame();
+  const headNow = head();
+  const toHud = hud.object3D.position.clone().sub(headNow);
+  const fwd = scene.camera.getWorldDirection(new THREE.Vector3());
+  // Esquerda = produto vetorial (frente × cima) negativo.
+  out.hudOnLeft = new THREE.Vector3().crossVectors(fwd, new THREE.Vector3(0, 1, 0)).dot(toHud) < 0;
+  out.hudPointableByMouse = cursor.components.raycaster.objects.some((o) => o.el?.classList.contains("hud-button"));
+  await press("attack");
+  out.hudAttackPage = [hud.dataset.page, hudButtons().length];
+  out.hudBackBelowGrid = [coords("x"), coords("y")];
+  out.hudAttackPanelHeight = +(+hudPlane()).toFixed(3);
+  await press("back");
+  await press("powerup");
+  out.hudPowerupPage = [hud.dataset.page, hudButtons().length];
+  await press("feriado");
+  out.hudBackToMainAfterChoice = hud.dataset.page;
+  await press("giveup");
+  out.hudGiveUpStays = hud.dataset.page;
+
+  // Um pokémon por jogador; distinção por dono; trocar traz a bola de volta.
+  const rackOf = (p) => scene.querySelector(`[ball-rack*="${p}"]`).components["ball-rack"];
+  const p1Rack = rackOf("p1");
+  const p2Rack = rackOf("p2");
+  const drop = async (ball, x, z) => {
+    const b = ball.components["physics-body"];
+    b.body.position.set(x, 0.4, z); b.stop(); b.takeOff(); b.body.wakeUp();
+    for (let i = 0; i < 40; i++) await frame();
+  };
+  const pokemonsOf = (p) => document.querySelectorAll(`.released-pokemon[data-player="${p}"]`).length;
+  await drop(p1Rack.balls[0], 0, 4);
+  out.p1FirstReleased = pokemonsOf("p1");
+  out.ownerMarked = !!document.querySelector('.released-pokemon[data-player="p1"] .owner-ring');
+  await drop(p1Rack.balls[1], 1, 4);
+  out.p1SecondBlocked = pokemonsOf("p1");
+  out.hudBlockedMsg = hud.querySelector(".hud-status").getAttribute("value");
+  out.secondBallReturning = p1Rack.balls[1].hasAttribute("data-returning");
+  for (let i = 0; i < 90; i++) await frame();
+  out.secondBallBackInSlotM = +p1Rack.balls[1].object3D.position.distanceTo(p1Rack.slots[1]).toFixed(3);
+  await drop(p2Rack.balls[0], 0, -4);
+  out.p2Released = pokemonsOf("p2");
+  const ringColor = (p) => document.querySelector(`.released-pokemon[data-player="${p}"] .owner-ring`)?.getAttribute("material").color;
+  out.ownerColorsDiffer = ringColor("p1") !== ringColor("p2");
+  await press("switch");
+  out.switchStatus = hud.querySelector(".hud-status").getAttribute("value");
+  out.switchBallReturning = p1Rack.balls[0].hasAttribute("data-returning");
+  let peakY = 0;
+  for (let i = 0; i < 100; i++) { await frame(); peakY = Math.max(peakY, p1Rack.balls[0].object3D.position.y); }
+  out.switchArcPeakY = +peakY.toFixed(2);
+  out.switchBallBackInSlotM = +p1Rack.balls[0].object3D.position.distanceTo(p1Rack.slots[0]).toFixed(3);
+  out.p1AfterSwitch = pokemonsOf("p1");
+  out.p2StillOut = pokemonsOf("p2");
+  await drop(p1Rack.balls[2], 0, 4);
+  out.p1CanSendAnotherAfterSwitch = pokemonsOf("p1");
   out.errors = errors;
   report(out);
 }

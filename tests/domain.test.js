@@ -88,3 +88,46 @@ test("analógico para frente afasta, para trás puxa, zona morta ignora", () => 
   assert.ok(thumbstickReel(1, 4, 0.1, 0.15) < 0);
   assert.equal(thumbstickReel(0.1, 4, 0.1, 0.15), 0);
 });
+
+import { approachAngle, arcPoint, canSendOut, returnSlot } from "../site/src/domain/battle.js";
+import { chooseHudOption } from "../site/src/domain/hud.js";
+
+test("batalha: um pokémon por jogador, jogadores independentes", () => {
+  const active = { p1: "bolaA" };
+  assert.equal(canSendOut(active, "p1", "bolaB"), false);
+  assert.equal(canSendOut(active, "p1", "bolaA"), true);
+  assert.equal(canSendOut(active, "p2", "bolaC"), true);
+  assert.equal(canSendOut({}, "p1", "bolaB"), true);
+});
+
+test("bola volta para o próprio encaixe ou para o primeiro livre", () => {
+  assert.equal(returnSlot(1, [true, false, true]), 1);
+  assert.equal(returnSlot(1, [false, true, false]), 0);
+  assert.equal(returnSlot(2, [true, true, true]), 2);
+});
+
+test("arco de retorno começa e termina nos pontos e sobe no meio", () => {
+  const from = { x: 0, y: 0, z: 0 };
+  const to = { x: 2, y: 1, z: -2 };
+  assert.deepEqual(arcPoint(from, to, 0, 1), from);
+  const end = arcPoint(from, to, 1, 1);
+  assert.ok(Math.abs(end.x - 2) < 1e-9 && Math.abs(end.y - 1) < 1e-9 && Math.abs(end.z + 2) < 1e-9);
+  assert.ok(arcPoint(from, to, 0.5, 1).y > 1.4);
+});
+
+test("giro do HUD vai pelo caminho mais curto", () => {
+  const near = approachAngle(3, -3, 1);
+  assert.ok(Math.abs(Math.cos(near) - Math.cos(-3)) < 1e-9);
+  assert.ok(Math.abs(approachAngle(3, -3, 0.5) - (3 + (2 * Math.PI - 6) / 2)) < 1e-9);
+});
+
+test("HUD: navegação entre páginas e ações anunciadas", () => {
+  assert.deepEqual(chooseHudOption("main", { action: "attack" }), { page: "attack", emit: null });
+  assert.deepEqual(chooseHudOption("main", { action: "powerup" }), { page: "powerup", emit: null });
+  assert.deepEqual(chooseHudOption("main", { action: "switch" }), { page: "main", emit: { action: "switch" } });
+  assert.deepEqual(chooseHudOption("attack", { action: "back" }), { page: "main", emit: null });
+  assert.deepEqual(chooseHudOption("attack", { id: "chamada-oral" }),
+    { page: "main", emit: { action: "attack", id: "chamada-oral" } });
+  assert.deepEqual(chooseHudOption("powerup", { id: "feriado" }),
+    { page: "main", emit: { action: "powerup", id: "feriado" } });
+});

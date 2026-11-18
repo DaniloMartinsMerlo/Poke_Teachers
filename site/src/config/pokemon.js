@@ -22,3 +22,11 @@ export const POKEMON_LOOKS = Object.freeze([
   { body: "#f5d547", belly: "#fff6c9", accent: "#3a2f1f", ears: "pointy" },
   { body: "#b48ee0", belly: "#f1e6ff", accent: "#7552a3", ears: "pointy" },
 ]);
+
+// Recolher o pokémon (trocar): encolhe com um clarão vermelho (ms).
+export const RECALL_DURATION = 350;
+export const RECALL_FLASH_COLOR = "#ff4d4d";
+
+// Marca do dono no campo: anel no chão e plaquinha acima da cabeça.
+export const OWNER_RING_RADIUS = 0.34;
+export const OWNER_TAG_HEIGHT = POKEMON_SIZE + 0.18;

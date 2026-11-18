@@ -1,4 +1,4 @@
-import { GRABBABLE_SELECTOR } from "../../config/constants.js";
+import { POINTABLE_SELECTOR } from "../../config/constants.js";
 import { LASER_REACH } from "../../config/grab.js";
 
 const LOCOMOTION_COMPONENT = Object.freeze({
@@ -6,7 +6,8 @@ const LOCOMOTION_COMPONENT = Object.freeze({
   turn: "thumbstick-turn",
 });
 
-// Controle físico (ex.: Quest Touch): laser, pegar com gatilho/grip,
+// Controle físico (ex.: Quest Touch): laser (pokébolas e botões do HUD),
+// pegar com gatilho/grip,
 // resetar com B/Y e uma função de locomoção no analógico.
 AFRAME.registerComponent("player-controller", {
   schema: {
@@ -18,7 +19,7 @@ AFRAME.registerComponent("player-controller", {
   init() {
     const { hand, locomotion, laserLength } = this.data;
     this.el.setAttribute("laser-controls", { hand });
-    this.el.setAttribute("raycaster", { objects: GRABBABLE_SELECTOR, far: laserLength });
+    this.el.setAttribute("raycaster", { objects: POINTABLE_SELECTOR, far: laserLength });
     this.el.setAttribute("controller-input-gate", { hand });
     this.el.setAttribute("controller-grabber", { hand });
     this.el.setAttribute("controller-reset", "");

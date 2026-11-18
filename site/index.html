@@ -37,10 +37,14 @@
 
       <!-- Suportes das pokébolas, cada um à direita do seu treinador, com
            as bolas enfileiradas ao longo do corpo. "pokemon" = professor
-           guardado em cada bola, na ordem (nomes em src/config/teachers.js). -->
-      <a-entity ball-rack="pokemon: Fabi, Murilo, Rodinha" position="0.6 0 7" rotation="0 90 0"></a-entity>
+           guardado em cada bola, na ordem (nomes em src/config/teachers.js).
+           "player" = dono (cor e rótulo em src/config/players.js). -->
+      <a-entity ball-rack="player: p1; pokemon: Fabi, Murilo, Rodinha" position="0.6 0 7" rotation="0 90 0"></a-entity>
       <!-- Adversário (do outro lado do campo, olhando para +z). -->
-      <a-entity ball-rack="pokemon: Rodinha, Murilo, Fabi" position="-0.6 0 -7" rotation="0 -90 0"></a-entity>
+      <a-entity ball-rack="player: p2; pokemon: Rodinha, Murilo, Fabi" position="-0.6 0 -7" rotation="0 -90 0"></a-entity>
+
+      <!-- Menu de batalha do jogador 1: acompanha a cabeça pela esquerda. -->
+      <a-entity battle-hud="player: p1"></a-entity>
 
       <!-- JOGADOR
            Mãos rastreadas: pinça pega e solta.
@@ -56,7 +60,7 @@
         wasd-controls="acceleration: 20"
         vertical-controls>
         <a-entity camera position="0 1.6 0" look-controls>
-          <a-cursor id="mouse-cursor" raycaster="objects: .grabbable" fuse="false" color="#ffffff"></a-cursor>
+          <a-cursor id="mouse-cursor" raycaster="objects: .grabbable, .hud-button" fuse="false" color="#ffffff"></a-cursor>
         </a-entity>
         <a-entity player-hand="hand: left"></a-entity>
         <a-entity player-hand="hand: right"></a-entity>

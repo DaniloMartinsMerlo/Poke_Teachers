@@ -11,6 +11,13 @@ export const HELD_ATTRIBUTE = "data-held";
 export const PLAYER_OBSTACLE_CLASS = "player-obstacle";
 export const PLAYER_OBSTACLE_SELECTOR = `.${PLAYER_OBSTACLE_CLASS}`;
 
+// Botões do HUD (alvos do mouse e do laser junto com as pokébolas).
+export const HUD_BUTTON_CLASS = "hud-button";
+export const POINTABLE_SELECTOR = `${GRABBABLE_SELECTOR}, .${HUD_BUTTON_CLASS}`;
+
+// Bola voltando sozinha para o suporte: ninguém pode pegá-la no caminho.
+export const RETURNING_ATTRIBUTE = "data-returning";
+
 export const MOUSE_CURSOR_ID = "mouse-cursor";
 
 export const HANDS = Object.freeze(["left", "right"]);
@@ -31,6 +38,15 @@ export const EVENTS = Object.freeze({
   BALL_TAKEOFF: "balltakeoff",
   // Um objeto acabou de ser solto (sobe da bola até a cena).
   GRAB_RELEASED: "grabreleased",
+  // Batalha (detail.player = id do jogador, detail.ball = pokébola).
+  POKEMON_RELEASED: "pokemonreleased",
+  POKEMON_RECALLED: "pokemonrecalled",
+  // A bola caiu no chão, mas o jogador já tem um pokémon em campo.
+  SEND_OUT_BLOCKED: "sendoutblocked",
+  // Pedido de trazer o pokémon em campo de volta ao suporte.
+  RECALL_REQUESTED: "recallrequested",
+  // Escolha no HUD (detail: player, action, id).
+  HUD_ACTION: "hudaction",
 });
 
 // Quadros muito longos (aba em segundo plano) não podem gerar saltos.

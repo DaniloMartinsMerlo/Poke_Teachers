@@ -18,3 +18,11 @@ export const WHEEL_METERS_PER_UNIT = 0.004;
 export const SLOT_SNAP_DISTANCE = 0.3;
 // Um encaixe está ocupado se houver bola a menos disto dele.
 export const SLOT_OCCUPIED_DISTANCE = 0.1;
+
+// Voo da bola de volta ao suporte (trocar pokémon / segundo pokémon
+// barrado): duração (ms), altura do arco (m) e voltas no ar.
+export const RETURN_DURATION = 900;
+export const RETURN_ARC_HEIGHT = 1;
+export const RETURN_SPINS = 2;
+// Espera depois de a bola cair antes de voltar, quando barrada (ms).
+export const BLOCKED_RETURN_DELAY = 300;

@@ -41,7 +41,8 @@ export const EVENTS = Object.freeze({
   // Batalha (detail.player = id do jogador, detail.ball = pokébola).
   POKEMON_RELEASED: "pokemonreleased",
   POKEMON_RECALLED: "pokemonrecalled",
-  // A bola caiu no chão, mas o jogador já tem um pokémon em campo.
+  // A bola caiu no chão, mas não pode soltar o pokémon (detail.reason:
+  // "one-at-a-time" = já há um em campo; "fainted" = ele desmaiou).
   SEND_OUT_BLOCKED: "sendoutblocked",
   // Pedido de trazer o pokémon em campo de volta ao suporte.
   RECALL_REQUESTED: "recallrequested",
@@ -49,7 +50,10 @@ export const EVENTS = Object.freeze({
   HUD_ACTION: "hudaction",
   // Vida do PokeProf de uma bola mudou (emitido na própria bola).
   POKEPROF_CHANGED: "pokeprofchanged",
-  // Um ataque acertou (detail: attackerPlayer, attacker, defender, damage).
+  // O PokeProf da bola chegou a 0 de vida (emitido na bola, sobe à cena).
+  POKEPROF_FAINTED: "pokeproffainted",
+  // Um ataque acertou (detail: attackerPlayer, defenderPlayer, attacker,
+  // defender, attackLabel, damage, hp, fainted).
   POKEMON_DAMAGED: "pokemondamaged",
 });
 

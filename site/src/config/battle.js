@@ -13,6 +13,10 @@ export const STRONG_MULTIPLIER = 1.5;
 export const WEAK_MULTIPLIER = 0.67;
 export const MIN_DAMAGE = 1;
 
+// Ao desmaiar (vida 0), espera este tempo (ms) com a barra zerada à vista
+// antes de o PokeProf voltar para a bola, que voa de volta ao suporte.
+export const FAINT_RECALL_DELAY = 900;
+
 // Poder usado pelo teste de balanceamento (um ataque "médio").
 export const BALANCE_TEST_POWER = 40;
 

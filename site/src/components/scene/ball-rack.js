@@ -7,6 +7,7 @@ import {
   SLOT_OCCUPIED_DISTANCE, SLOT_SNAP_DISTANCE,
 } from "../../config/grab.js";
 import { playerInfo } from "../../config/players.js";
+import { FAINT_RECALL_DELAY } from "../../config/battle.js";
 import { RECALL_DURATION } from "../../config/pokemon.js";
 import { arcPoint, returnSlot } from "../../domain/battle.js";
 import { findNearest } from "../../domain/nearest.js";
@@ -31,7 +32,9 @@ const SLOT_ACTIVE_COLOR = "#ffd23f";
 // Dono: "player" diz de quem é o suporte (cor da faixa do tampo e dos
 // pokémons). Ao pedido de troca (RECALL_REQUESTED) ou quando uma segunda
 // bola do mesmo jogador cai no chão (SEND_OUT_BLOCKED), a bola volta
-// voando em arco até um encaixe livre.
+// voando em arco até um encaixe livre. Quando o PokeProf em campo desmaia
+// (POKEPROF_FAINTED), depois de FAINT_RECALL_DELAY ele é recolhido do
+// mesmo jeito que na troca.
 AFRAME.registerComponent("ball-rack", {
   schema: {
     player: { default: "p1" },
@@ -51,6 +54,8 @@ AFRAME.registerComponent("ball-rack", {
     this.balls = [];
     // Voos em andamento: { ball, slot, from, elapsed, wait }.
     this.flights = [];
+    // Desmaiados esperando para voltar: { ball, wait }.
+    this.faintRecalls = [];
     this.buildStand();
     this.markers = this.buildSlotMarkers();
     const sceneEl = this.el.sceneEl;
@@ -61,7 +66,16 @@ AFRAME.registerComponent("ball-rack", {
         this.sendHome(detail.ball, BLOCKED_RETURN_DELAY);
       }
     };
-    this.onGameReset = () => this.finishFlights();
+    this.onFainted = (event) => {
+      if (this.balls.includes(event.target)) {
+        this.faintRecalls.push({ ball: event.target, wait: FAINT_RECALL_DELAY });
+      }
+    };
+    this.onGameReset = () => {
+      this.faintRecalls = [];
+      this.finishFlights();
+    };
+    sceneEl.addEventListener(EVENTS.POKEPROF_FAINTED, this.onFainted);
     sceneEl.addEventListener(EVENTS.GRAB_RELEASED, this.onReleased);
     sceneEl.addEventListener(EVENTS.RECALL_REQUESTED, this.onRecallRequested);
     sceneEl.addEventListener(EVENTS.SEND_OUT_BLOCKED, this.onSendOutBlocked);
@@ -163,11 +177,31 @@ AFRAME.registerComponent("ball-rack", {
       return;
     }
     const ball = this.el.sceneEl.systems.battle.activeBall(player);
-    if (!ball || !this.balls.includes(ball)) {
+    if (ball && this.balls.includes(ball)) {
+      this.recallBall(ball);
+    }
+  },
+
+  // Pokémon volta para a bola (encolhe) e a bola voa até o suporte.
+  // Se ele já não está em campo (alguém pegou a bola), não faz nada.
+  recallBall(ball) {
+    const release = ball.components["pokemon-release"];
+    if (!release?.creature) {
       return;
     }
-    ball.components["pokemon-release"].recall(true);
+    release.recall(true);
     this.sendHome(ball, RECALL_DURATION);
+  },
+
+  advanceFaintRecalls(delta) {
+    this.faintRecalls = this.faintRecalls.filter((pending) => {
+      pending.wait -= delta;
+      if (pending.wait > 0) {
+        return true;
+      }
+      this.recallBall(pending.ball);
+      return false;
+    });
   },
 
   // Faz `ball` voar em arco até o encaixe dela (ou outro livre), depois
@@ -234,6 +268,9 @@ AFRAME.registerComponent("ball-rack", {
     if (!this.slots.length) {
       return;
     }
+    if (this.faintRecalls.length) {
+      this.advanceFaintRecalls(Math.min(delta || 0, MAX_FRAME_MS));
+    }
     if (this.flights.length) {
       this.advanceFlights(Math.min(delta || 0, MAX_FRAME_MS));
     }
@@ -258,5 +295,6 @@ AFRAME.registerComponent("ball-rack", {
     sceneEl.removeEventListener(EVENTS.RECALL_REQUESTED, this.onRecallRequested);
     sceneEl.removeEventListener(EVENTS.SEND_OUT_BLOCKED, this.onSendOutBlocked);
     sceneEl.removeEventListener(EVENTS.GAME_RESET, this.onGameReset);
+    sceneEl.removeEventListener(EVENTS.POKEPROF_FAINTED, this.onFainted);
   },
 });

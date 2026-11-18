@@ -286,3 +286,25 @@ professores.
   e faixa na borda esquerda com a cor do dono.
 - Com os dois cartões, a pilha passa ~17 cm acima da altura dos olhos;
   se incomodar no Quest, aumentar `HUD_DROP` em `config/hud.js`.
+
+## 2026-11-18 — PokeProf desmaiado volta para a bola
+
+### Mudanças
+- Vida chega a 0: o componente `pokeprof` emite `pokeproffainted` (sobe
+  até a cena). Depois de `FAINT_RECALL_DELAY` (900 ms, `config/battle.js`)
+  com a barra zerada e "Desmaiado" à vista no cartão, o suporte recolhe o
+  pokémon com a mesma animação do "Trocar PokeProf" (encolhe + bola voa ao
+  suporte) — `ball-rack.recallBall`.
+- Bola de desmaiado jogada de novo não abre: `sendoutblocked` com
+  `reason: "fainted"`, a bola volta sozinha e o HUD avisa "X esta
+  desmaiado!". O reset do jogo cura todos.
+- HUD: ao derrubar o adversário mostra "X desmaiou! -N HP"; o dono do
+  desmaiado vê "X desmaiou!". `pokemondamaged` ganhou `defenderPlayer` e
+  `fainted`.
+
+### Decisões e motivos
+- Desmaiado não volta à batalha até o reset (como no Pokémon); era o
+  "provável" anotado no A_FAZER.
+- Espera antes de recolher para o jogador ver o golpe final na barra.
+- O atraso é contado nos `tick`s do suporte, não com `setTimeout`: pausa
+  junto com a cena e funciona no e2e com quadros simulados.

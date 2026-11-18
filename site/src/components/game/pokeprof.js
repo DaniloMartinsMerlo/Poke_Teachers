@@ -5,7 +5,8 @@ import { Pokeprof } from "../../domain/pokeprof.js";
 // PokeProf guardado na pokébola: cada bola tem a sua instância (dois
 // jogadores com o mesmo professor têm vidas separadas). Atributos base
 // vêm de config/teachers.js. Avisa POKEPROF_CHANGED na bola quando a vida
-// muda; o reset do jogo cura todos.
+// muda e POKEPROF_FAINTED (sobe até a cena) quando chega a 0; o reset do
+// jogo cura todos.
 AFRAME.registerComponent("pokeprof", {
   schema: {
     name: { type: "string", default: "" },
@@ -22,6 +23,9 @@ AFRAME.registerComponent("pokeprof", {
     const lost = this.prof.takeDamage(amount);
     if (lost) {
       this.changed();
+      if (this.prof.isFainted()) {
+        this.el.emit(EVENTS.POKEPROF_FAINTED, { name: this.prof.name }, true);
+      }
     }
     return lost;
   },

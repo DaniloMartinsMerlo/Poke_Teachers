@@ -293,6 +293,30 @@ async function run() {
   out.p2StillOut = pokemonsOf("p2");
   await drop(p1Rack.balls[2], 0, 4);
   out.p1CanSendAnotherAfterSwitch = pokemonsOf("p1");
+  // Desmaio: ataque que zera a vida do adversário → ele volta para a bola
+  // (bola voa ao suporte) e não pode ser jogado de novo até o reset.
+  const foeProf = p2Ball.components.pokeprof;
+  foeProf.damage(foeProf.prof.hp - 1);
+  await press("attack");
+  await press("chamada-oral");
+  out.faintStatus = hud.querySelector(".hud-status").getAttribute("value");
+  out.foeFainted = foeProf.prof.isFainted();
+  out.foeCardShowsFainted = opponentCard()?.querySelector(".hp-text").getAttribute("value");
+  out.foeStillOutDuringDelay = pokemonsOf("p2");
+  for (let i = 0; i < 60; i++) await frame(); // > FAINT_RECALL_DELAY (900 ms)
+  out.foeReturning = p2Ball.hasAttribute("data-returning");
+  out.foeRecalled = p2Ball.components["pokemon-release"].creature === null;
+  for (let i = 0; i < 100; i++) await frame();
+  out.foeBallBackInSlotM = +p2Ball.object3D.position.distanceTo(p2Rack.slots[0]).toFixed(3);
+  out.foeCardGone = !opponentCard();
+  out.p2ActiveCleared = scene.systems.battle.activeBall("p2") === null;
+  await drop(p2Ball, 0, -4);
+  out.faintedCantSendOut = pokemonsOf("p2");
+  out.faintedBallReturning = p2Ball.hasAttribute("data-returning");
+  for (let i = 0; i < 100; i++) await frame();
+  // Outra bola do J2 (viva) pode entrar.
+  await drop(p2Rack.balls[1], 0, -4);
+  out.otherFoeCanSendOut = pokemonsOf("p2");
   scene.emit("gamereset"); await frame();
   out.cardHpAfterReset = hpText();
   out.noCardsAfterReset = hud.querySelectorAll(".hud-field-card").length === 0;

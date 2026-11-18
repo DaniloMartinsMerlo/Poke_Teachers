@@ -56,11 +56,13 @@ AFRAME.registerSystem("battle", {
     const damage = defender.damage(calculateDamage(attacker.prof, defender.prof, move.power, BEATS, DAMAGE_RULES));
     this.el.emit(EVENTS.POKEMON_DAMAGED, {
       attackerPlayer: player,
+      defenderPlayer: this.opponentOf(player),
       attacker: attacker.prof.name,
       defender: defender.prof.name,
       attackLabel: move.label,
       damage,
       hp: defender.prof.hp,
+      fainted: defender.prof.isFainted(),
     }, false);
   },
 

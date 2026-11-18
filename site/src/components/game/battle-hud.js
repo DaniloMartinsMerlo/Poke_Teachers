@@ -78,14 +78,22 @@ AFRAME.registerComponent("battle-hud", {
     this.showPage(HUD_PAGES.MAIN);
 
     this.onBlocked = ({ detail }) => {
-      if (detail.player === this.data.player) {
-        this.setStatus("Apenas 1 PokeProf por vez!");
+      if (detail.player !== this.data.player) {
+        return;
       }
+      const name = detail.ball.components.pokeprof?.prof.name;
+      this.setStatus(detail.reason === "fainted"
+        ? `${name} esta desmaiado!`
+        : "Apenas 1 PokeProf por vez!");
     };
-    // Ataque acertou: mostra o dano no status.
+    // Ataque acertou: mostra o dano (e o desmaio) no status.
     this.onDamaged = ({ detail }) => {
       if (detail.attackerPlayer === this.data.player) {
-        this.setStatus(`${detail.attacker} usou ${detail.attackLabel}! -${detail.damage} HP`);
+        this.setStatus(detail.fainted
+          ? `${detail.defender} desmaiou! -${detail.damage} HP`
+          : `${detail.attacker} usou ${detail.attackLabel}! -${detail.damage} HP`);
+      } else if (detail.defenderPlayer === this.data.player && detail.fainted) {
+        this.setStatus(`${detail.defender} desmaiou!`);
       }
     };
     this.el.sceneEl.addEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);

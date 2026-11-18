@@ -21,7 +21,8 @@ import { createEntity, vec3 } from "../../utils/entity.js";
 //
 // Cada jogador só tem um pokémon em campo (sistema "battle"): se já houver
 // um, a bola não abre e a cena recebe SEND_OUT_BLOCKED (o suporte a traz
-// de volta). O pokémon leva a cor e o rótulo do dono (anel no chão e
+// de volta). Professor desmaiado (vida 0) também não sai até o reset do
+// jogo (reason "fainted"). O pokémon leva a cor e o rótulo do dono (anel no chão e
 // plaquinha), para distinguir os dois lados.
 //
 // O pokémon é filho da cena, e não da bola: a bola tem escala 0,01 e gira.
@@ -59,8 +60,11 @@ AFRAME.registerComponent("pokemon-release", {
     }
     const sceneEl = this.el.sceneEl;
     const { player } = this.data;
-    if (!sceneEl.systems.battle.canSendOut(player, this.el)) {
-      sceneEl.emit(EVENTS.SEND_OUT_BLOCKED, { player, ball: this.el }, false);
+    const blockedBy = this.el.components.pokeprof?.prof.isFainted()
+      ? "fainted"
+      : !sceneEl.systems.battle.canSendOut(player, this.el) && "one-at-a-time";
+    if (blockedBy) {
+      sceneEl.emit(EVENTS.SEND_OUT_BLOCKED, { player, ball: this.el, reason: blockedBy }, false);
       return;
     }
     this.el.object3D.getWorldPosition(this.ballPosition);

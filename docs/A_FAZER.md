@@ -48,11 +48,12 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   - Testes de domínio: ordem do turno com velocidade aumentada, dano com
     ataque/defesa aumentados, expiração após 1 turno, power-up que não
     vale no turno em que foi usado.
-- [ ] **PokeProf com HP zerado volta para a pokébola.** Ao desmaiar,
+- [x] **PokeProf com HP zerado volta para a pokébola.** Ao desmaiar,
   recolher com a mesma animação do "Trocar PokeProf" (bola voa de volta
-  ao suporte). Definir se a bola de um desmaiado pode ser jogada de novo
-  (provável: não, até o reset) e o que acontece quando todos desmaiam
-  (fim de jogo).
+  ao suporte). A bola de um desmaiado não abre de novo até o reset.
+- [ ] **Fim de jogo.** O que acontece quando todos os PokeProfs de um
+  jogador desmaiam: anunciar o vencedor (placar `arena-scoreboard`?),
+  travar o HUD, oferecer recomeçar.
 
 ## Batalha
 

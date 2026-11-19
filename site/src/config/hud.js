@@ -40,6 +40,17 @@ export const HUD_COLORS = Object.freeze({
   disabled: "#5b5f66",
 });
 
+// Detalhe dos botões de ataque (poder e dano estimado) e badge dos
+// power-ups (o que fazem), em uma linha menor embaixo do nome.
+export const HUD_DETAIL = Object.freeze({ labelLift: 0.014, rowY: -0.019, badgeWidth: 0.13, badgeHeight: 0.022 });
+export const HUD_BADGE_COLORS = Object.freeze({
+  attack: "#e0533d",
+  speed: "#d9a400",
+  defense: "#3b7dd8",
+  heal: "#2e9e4f",
+});
+export const HUD_DETAIL_COLOR = "#c9d6ea";
+
 export const HUD_PAGES = Object.freeze({
   MAIN: "main", ATTACK: "attack", POWERUP: "powerup", GAME_OVER: "gameover",
 });
@@ -73,3 +84,16 @@ export const HUD_TEXTS = Object.freeze({
 export const HUD_RESULT_COLORS = Object.freeze({ win: "#4cd964", lose: "#ff6b5e" });
 
 // Ataques e power-ups do menu: config/battle.js.
+
+// Registro de batalha: painel à direita do menu com as últimas ações.
+export const HUD_LOG = Object.freeze({ width: 0.36, lines: 7, lineHeight: 0.03, gap: 0.015, wrapCount: 44 });
+export const HUD_LOG_COLORS = Object.freeze({ p1: "#7fb6ff", p2: "#ff8a75", turn: "#9aa4b5" });
+
+// Balões sobre os PokeProfs no campo, a cada ação do turno.
+//   height: acima do chão (m); rise: quanto sobem enquanto somem;
+//   duration (ms); scalePerMeter: crescem com a distância até a câmera
+//   para continuar legíveis do outro lado do campo (mínimo 1).
+export const FIELD_CALLOUT = Object.freeze({
+  height: 1.1, noteOffset: 0.17, rise: 0.3, duration: 2200, scalePerMeter: 0.22,
+  damageColor: "#ff5a4a", healColor: "#4cd964", noteColor: "#ffd23f",
+});

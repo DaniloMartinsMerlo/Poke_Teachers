@@ -90,7 +90,9 @@ test("analógico para frente afasta, para trás puxa, zona morta ignora", () => 
 });
 
 import { approachAngle, arcPoint, canSendOut, returnSlot } from "../site/src/domain/battle.js";
-import { chooseHudOption, pullWithin, pullWithin1D } from "../site/src/domain/hud.js";
+import {
+  calloutTexts, chooseHudOption, effectivenessNote, logLine, optionDetail, pullWithin, pullWithin1D,
+} from "../site/src/domain/hud.js";
 
 test("batalha: um pokémon por jogador, jogadores independentes", () => {
   const active = { p1: "bolaA" };
@@ -133,6 +135,33 @@ test("HUD: navegação entre páginas e ações anunciadas", () => {
   assert.deepEqual(chooseHudOption("gameover", { action: "playagain" }),
     { page: "main", emit: { action: "playagain" } });
   assert.deepEqual(chooseHudOption("gameover", { action: "attack" }), { page: "gameover", emit: null });
+});
+
+test("HUD: poder embaixo dos ataques e efeito no badge dos power-ups", () => {
+  assert.equal(optionDetail({ id: "x", power: 60 }), "Poder 60");
+  assert.equal(optionDetail({ id: "x", power: 60 }, 32), "Poder 60 (~32 dano)");
+  assert.equal(optionDetail({ effect: "heal", percent: 35 }), "Cura 35% HP");
+  assert.equal(optionDetail({ effect: "boost", short: "VEL", percent: 80 }), "VEL +80% (1 turno)");
+  assert.equal(optionDetail({ action: "back" }), "");
+});
+
+test("balões e registro: golpe, dano, efetividade, desmaio, power-up", () => {
+  const hit = { kind: "attack", player: "p2", target: "p1", actorName: "Rodinha", label: "Chamada Oral", damage: 16, multiplier: 1.5, fainted: false };
+  assert.deepEqual(calloutTexts(hit), { actor: "Chamada Oral!", target: "-16 HP", note: "Super efetivo!" });
+  assert.equal(calloutTexts({ ...hit, multiplier: 1, fainted: true }).note, "Desmaiou!");
+  assert.equal(effectivenessNote(0.67), "Pouco efetivo...");
+  assert.equal(effectivenessNote(1), "");
+  assert.equal(logLine(hit, "J2"), "J2 Rodinha: Chamada Oral -16 (super)");
+  const heal = { kind: "powerup", actorName: "Fabi", label: "Intervalo", healed: 35, powerup: { effect: "heal" } };
+  assert.deepEqual(calloutTexts(heal), { actor: "Intervalo! +35 HP", target: null, note: "" });
+  const boost = { kind: "powerup", actorName: "Murilo", label: "Feriado", powerup: { effect: "boost", short: "DEF", percent: 100 } };
+  assert.equal(logLine(boost, "J1"), "J1 Murilo: Feriado DEF +100%");
+  // Todas as linhas possíveis cabem numa linha do registro (HUD_LOG.wrapCount).
+  for (const t of ["Fabi", "Murilo", "Rodinha"]) {
+    for (const a of ATTACKS) {
+      assert.ok(logLine({ ...hit, actorName: t, label: a.label, damage: 99, multiplier: 0.67 }, "J2").length <= 44);
+    }
+  }
 });
 
 test("HUD: folga ignora inclinar a cabeça e arrasta ao andar", () => {

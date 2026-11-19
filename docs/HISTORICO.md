@@ -377,3 +377,39 @@ professores.
 - Trocar gasta o turno? Desistir.
 - Validar no Quest: ritmo do turno, legibilidade das mensagens e do
   cartão com power-up, bola encostando nas paredes.
+### Ajuste no mesmo dia — poder dos ataques, badges dos power-ups
+- Botões de ataque mostram, embaixo do nome, "Poder 60 (~33 dano)": o
+  dano estimado contra o PokeProf do adversário em campo (tipo e
+  power-ups de agora); sem adversário, só o poder. A página se refaz
+  quando alguém entra/sai de campo.
+- Botões de power-up ganharam um badge colorido com o efeito ("ATQ +50%
+  (1 turno)", "Cura 35% HP"...). Cores em `HUD_BADGE_COLORS`
+  (`config/hud.js`); texto em `domain/hud.js` → `optionDetail`.
+- Mensagem de desmaio diz de quem é ("Rodinha (J2) desmaiou!"): os dois
+  times têm os mesmos professores e antes era ambíguo.
+- Pergunta do usuário: "a CPU escolhe o PokeProf com base no meu?" Não:
+  sorteio uniforme entre os de pé (1/3 de chance de ter vantagem de
+  tipo). Simulação de 20 mil partidas com as regras atuais: jogador
+  atacando ao acaso vence ~70%; sempre "Reprovar" vence ~87%. Sem
+  mudança de números por enquanto — o mais provável era o jogador não
+  saber o poder de cada ataque (Chamada Oral 30 x Reprovar 60), que agora
+  aparece no botão.
+
+### Ajuste no mesmo dia — ações do turno mais à vista, cartão sem estourar
+- **Balões no campo** (componente `battle-callouts`, uma entidade no
+  `index.html`): a cada ação, o nome do golpe/power-up aparece sobre o
+  PokeProf que agiu (faixa na cor do dono) e o dano sobre quem levou, com
+  "Super efetivo!" / "Pouco efetivo..." / "Desmaiou!". Sobem e somem em
+  2,2 s, viram para a câmera e crescem com a distância (o do outro lado
+  do campo continua legível). Valores em `FIELD_CALLOUT` (`config/hud.js`).
+- **Registro da batalha** à direita do menu: "Turno N" e as últimas 7
+  ações, na cor do dono ("J2 Rodinha: Chamada Oral -40 (super)"), e o
+  vencedor no fim. O status amarelo ficou só para "Aguardando
+  adversario..." / "Resolvendo o turno..." e avisos.
+- `performAction` devolve `multiplier` (vantagem de tipo) para mostrar a
+  efetividade. Textos em `domain/hud.js` (`calloutTexts`, `logLine`).
+- Cartão em campo: a linha do power-up estourava a moldura ("Feriado: DEF
+  +100% (este turno)", 2 linhas). Agora "DEF +100% ativo" / "DEF +100%
+  prox. turno" (cabe na coluna de ~26 caracteres).
+- Motivo: o usuário achou as ações do turno escondidas na linha amarela
+  embaixo do HUD.

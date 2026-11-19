@@ -31,8 +31,9 @@ export function boostLabel(prof) {
   if (!boost) {
     return "";
   }
-  const when = prof.activeBoost ? "este turno" : "prox. turno";
-  return `${boost.label}: ${boost.short} +${boost.percent}% (${when})`;
+  // Curto: a coluna de texto do cartão tem ~26 caracteres.
+  const when = prof.activeBoost ? "ativo" : "prox. turno";
+  return `${boost.short} +${boost.percent}% ${when}`;
 }
 
 /**

@@ -129,6 +129,9 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   tremer? Volta para a mão ao afastar?
 - [ ] Partida contra a CPU: ritmo do turno (esperas), mensagens do HUD,
   cartão com power-up e tela de fim de jogo legíveis.
+- [ ] Balões no campo: tamanho/legibilidade perto e do outro lado do
+  campo. Registro da batalha: letra pequena demais? Largura do HUD com o
+  registro (~80 cm) confortável?
 - [ ] Pinça e troca mão ↔ controle; colisão andando de verdade.
 - [ ] Colisões dos arremessos contra arquibancadas e torres.
 - [ ] HUD: legibilidade, pinça nos botões, conforto ao seguir o corpo.

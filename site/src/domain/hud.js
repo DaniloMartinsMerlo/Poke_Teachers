@@ -60,3 +60,63 @@ export function pullWithin1D(anchor, target, slack) {
   }
   return target - Math.sign(diff) * slack;
 }
+
+/**
+ * Linha de detalhe de uma opção do HUD: poder do ataque (com o dano
+ * estimado contra o adversário em campo, se houver) ou o efeito do
+ * power-up. "" para as demais.
+ * @param {{power?: number, effect?: string, short?: string, percent?: number}} option
+ * @param {number | null} [estimate] dano estimado
+ */
+export function optionDetail(option, estimate = null) {
+  if (typeof option.power === "number") {
+    return estimate == null ? `Poder ${option.power}` : `Poder ${option.power} (~${estimate} dano)`;
+  }
+  if (option.effect === "heal") {
+    return `Cura ${option.percent}% HP`;
+  }
+  if (option.effect === "boost") {
+    return `${option.short} +${option.percent}% (1 turno)`;
+  }
+  return "";
+}
+
+/** "Super efetivo!" / "Pouco efetivo..." pelo multiplicador de tipo, ou "". */
+export function effectivenessNote(multiplier) {
+  if (multiplier > 1) return "Super efetivo!";
+  if (multiplier > 0 && multiplier < 1) return "Pouco efetivo...";
+  return "";
+}
+
+/** Efeito curto do power-up: "DEF +100%" ou "+42 HP" (cura). */
+function powerupEffect(detail) {
+  const { powerup } = detail;
+  return powerup.effect === "heal" ? `+${detail.healed} HP` : `${powerup.short} +${powerup.percent}%`;
+}
+
+/**
+ * Textos que flutuam sobre os PokeProfs no campo para uma ação do turno
+ * (TURN_ACTION). `actor`: sobre quem agiu (nome do golpe/power-up);
+ * `target`: sobre quem levou o golpe (dano) e `note` (efetividade ou
+ * desmaio), ou null.
+ */
+export function calloutTexts(detail) {
+  if (detail.kind === "attack") {
+    const notes = [effectivenessNote(detail.multiplier), detail.fainted ? "Desmaiou!" : ""].filter(Boolean);
+    return { actor: `${detail.label}!`, target: `-${detail.damage} HP`, note: notes.join(" ") };
+  }
+  return { actor: `${detail.label}! ${powerupEffect(detail)}`, target: null, note: "" };
+}
+
+/**
+ * Linha curta do registro de batalha (HUD), ex.: "J2 Rodinha: Chamada
+ * Oral -16". `owner`: rótulo do dono de quem agiu ("J1").
+ */
+export function logLine(detail, owner) {
+  const who = `${owner} ${detail.actorName}`;
+  if (detail.kind === "attack") {
+    const note = detail.multiplier > 1 ? " (super)" : detail.multiplier < 1 ? " (fraco)" : "";
+    return `${who}: ${detail.label} -${detail.damage}${note}`;
+  }
+  return `${who}: ${detail.label} ${powerupEffect(detail)}`;
+}

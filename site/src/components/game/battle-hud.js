@@ -1,16 +1,24 @@
 import { EVENTS, HUD_BUTTON_CLASS } from "../../config/constants.js";
-import { ATTACKS, POWERUPS } from "../../config/battle.js";
+import { ATTACKS, DAMAGE_RULES, POWERUPS } from "../../config/battle.js";
+import { TYPE_BEATS } from "../../config/teachers.js";
+import { calculateDamage } from "../../domain/combat.js";
+import { fighter } from "../../domain/turn.js";
 import {
   GAME_OVER_OPTIONS,
   HUD_ACTIONS,
   HUD_ANGLE_DEG,
+  HUD_BADGE_COLORS,
   HUD_BUTTON,
   HUD_CARD_GAP,
   HUD_COLORS,
+  HUD_DETAIL,
+  HUD_DETAIL_COLOR,
   HUD_DISTANCE,
   HUD_DROP,
   HUD_HEIGHT_SLACK,
   HUD_LAYOUT,
+  HUD_LOG,
+  HUD_LOG_COLORS,
   HUD_PAGES,
   HUD_PINCH_REACH,
   HUD_POSITION_SLACK,
@@ -24,7 +32,7 @@ import {
 } from "../../config/hud.js";
 import { playerInfo } from "../../config/players.js";
 import { angleBetween, approachAngle } from "../../domain/battle.js";
-import { chooseHudOption, pullWithin, pullWithin1D } from "../../domain/hud.js";
+import { chooseHudOption, logLine, optionDetail, pullWithin, pullWithin1D } from "../../domain/hud.js";
 import { frameSeconds } from "../../utils/time.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
 import { PokeprofCard } from "./pokeprof-card.js";
@@ -102,29 +110,53 @@ AFRAME.registerComponent("battle-hud", {
     };
     // Turno: cada ação aparece no status; travas seguem o estado do turno.
     this.lockKey = "";
-    this.onTurnAction = ({ detail }) => this.setStatus(this.describeAction(detail));
-    this.onTurnStarted = () => this.setStatus(HUD_TEXTS.resolving, true);
+    this.logEntries = [];
+    this.turnNumber = 0;
+    this.onTurnAction = ({ detail }) => this.logAction(detail);
+    this.onTurnStarted = () => {
+      this.turnNumber += 1;
+      this.addLog(`Turno ${this.turnNumber}`, HUD_LOG_COLORS.turn);
+      this.setStatus(HUD_TEXTS.resolving, true);
+    };
+    this.onTurnResolved = () => this.setStatus("");
     this.onTurnChanged = () => this.refreshLocks();
-    this.onGameOver = ({ detail }) => this.showGameOver(detail.winner === this.data.player);
+    this.onGameOver = ({ detail }) => {
+      this.addLog(`Fim de jogo: ${playerInfo(detail.winner).label} venceu!`, HUD_LOG_COLORS.turn);
+      this.showGameOver(detail.winner === this.data.player);
+    };
     this.onGameReset = () => {
       this.setStatus("");
+      this.turnNumber = 0;
+      this.logEntries = [];
+      this.renderLog();
       this.lockKey = this.computeLockKey();
       this.showPage(HUD_PAGES.MAIN);
     };
     const sceneEvents = [
       [EVENTS.TURN_ACTION, this.onTurnAction],
       [EVENTS.TURN_STARTED, this.onTurnStarted],
+      [EVENTS.TURN_RESOLVED, this.onTurnResolved],
       [EVENTS.TURN_CHANGED, this.onTurnChanged],
       [EVENTS.GAME_OVER, this.onGameOver],
       [EVENTS.GAME_RESET, this.onGameReset],
     ];
     this.sceneEvents = sceneEvents;
     sceneEvents.forEach(([name, handler]) => this.el.sceneEl.addEventListener(name, handler));
-    this.onSentOut = ({ detail }) => this.showFieldCard(detail.player, detail.ball);
+    // Dano estimado nos botões de ataque depende de quem está em campo.
+    this.refreshAttackPage = () => {
+      if (this.page === HUD_PAGES.ATTACK) {
+        this.showPage(HUD_PAGES.ATTACK);
+      }
+    };
+    this.onSentOut = ({ detail }) => {
+      this.showFieldCard(detail.player, detail.ball);
+      this.refreshAttackPage();
+    };
     this.onRecalled = ({ detail }) => {
       if (this.fieldCards.get(detail.player)?.ball === detail.ball) {
         this.hideFieldCard(detail.player);
       }
+      this.refreshAttackPage();
     };
     this.el.sceneEl.addEventListener(EVENTS.POKEMON_RELEASED, this.onSentOut);
     this.el.sceneEl.addEventListener(EVENTS.POKEMON_RECALLED, this.onRecalled);
@@ -165,8 +197,59 @@ AFRAME.registerComponent("battle-hud", {
     this.list = createEntity("a-entity");
 
     this.el.classList.add("battle-hud");
-    [this.panel, this.stripe, this.title, this.list, this.status]
+    [this.panel, this.stripe, this.title, this.list, this.status, this.buildLog()]
       .forEach((child) => this.el.appendChild(child));
+  },
+
+  // Registro de batalha à direita do painel: "Turno N" e cada ação, na
+  // cor do dono; a mais nova embaixo.
+  buildLog() {
+    const { width, lines, lineHeight, wrapCount } = HUD_LOG;
+    const { padding, title } = HUD_LAYOUT;
+    this.logHeight = padding + title + lines * lineHeight + padding;
+    const top = this.logHeight / 2;
+    const textWidth = width - 2 * padding;
+    this.logLines = Array.from({ length: lines }, (_, index) => createEntity("a-text", {
+      class: "hud-log-line", value: "", anchor: "left", align: "left",
+      color: HUD_COLORS.text, "wrap-count": wrapCount, width: textWidth,
+      position: vec3(-textWidth / 2, top - padding - title - (index + 0.5) * lineHeight, 0.002),
+    }));
+    this.logPanel = createEntity("a-entity", { class: "hud-log" }, [
+      createEntity("a-plane", {
+        width, height: this.logHeight,
+        material: `color: ${HUD_COLORS.panel}; shader: flat; transparent: true; opacity: 0.88`,
+      }),
+      createEntity("a-text", {
+        value: "Registro da batalha", align: "center", color: "#ffffff", "wrap-count": 30, width: textWidth,
+        position: vec3(0, top - padding - title / 2, 0.002),
+      }),
+      ...this.logLines,
+    ]);
+    return this.logPanel;
+  },
+
+  addLog(text, color) {
+    this.logEntries.push({ text, color });
+    this.logEntries = this.logEntries.slice(-HUD_LOG.lines);
+    this.renderLog();
+  },
+
+  renderLog() {
+    this.logLines.forEach((line, index) => {
+      const entry = this.logEntries[index];
+      line.setAttribute("value", entry ? entry.text : "");
+      if (entry) {
+        line.setAttribute("color", entry.color);
+      }
+    });
+  },
+
+  logAction(detail) {
+    const color = (player) => HUD_LOG_COLORS[player] || HUD_COLORS.text;
+    this.addLog(logLine(detail, playerInfo(detail.player).label), color(detail.player));
+    if (detail.fainted) {
+      this.addLog(`${playerInfo(detail.target).label} ${detail.targetName} desmaiou!`, color(detail.target));
+    }
   },
 
   // Ajusta o painel ao número de linhas de botões da página: título em
@@ -183,6 +266,9 @@ AFRAME.registerComponent("battle-hud", {
     this.title.object3D.position.set(0, top - padding - title / 2, 0.002);
     this.list.object3D.position.set(0, top - padding - title - height / 2, 0.003);
     this.status.object3D.position.set(0, -top + padding + status / 2, 0.002);
+    // Registro alinhado pelo topo, à direita do painel.
+    this.logPanel.object3D.position.set(
+      this.panelWidth / 2 + HUD_LOG.gap + HUD_LOG.width / 2, top - this.logHeight / 2, 0);
     this.panelTop = top;
     this.placeFieldCards();
   },
@@ -305,15 +391,21 @@ AFRAME.registerComponent("battle-hud", {
       width, height,
       material: `color: ${idleColor}; shader: flat`,
     });
+    const detail = optionDetail(option, this.estimateDamage(option));
     const label = createEntity("a-text", {
       value: option.label, align: "center", color: HUD_COLORS.text,
       "wrap-count": 18, width: HUD_BUTTON.width,
-      position: vec3(x, y, 0.002),
+      position: vec3(x, y + (detail ? HUD_DETAIL.labelLift : 0), 0.002),
     });
+    const detailText = detail ? this.buildDetail(option, detail, x, y) : null;
     const highlight = (on) => {
       const active = on && !this.isLocked(option);
       plane.setAttribute("material", "color", active ? HUD_COLORS.buttonHover : idleColor);
       label.setAttribute("color", active ? HUD_COLORS.textHover : HUD_COLORS.text);
+      // Poder do ataque (texto solto) acompanha o destaque; o badge não.
+      if (detailText && !option.effect) {
+        detailText.setAttribute("color", active ? HUD_COLORS.textHover : HUD_DETAIL_COLOR);
+      }
     };
     plane.addEventListener("mouseenter", () => highlight(true));
     plane.addEventListener("mouseleave", () => highlight(false));
@@ -321,6 +413,44 @@ AFRAME.registerComponent("battle-hud", {
     this.list.appendChild(plane);
     this.list.appendChild(label);
     return { plane, option, width };
+  },
+
+  // Linha de baixo do botão: ataque = "Poder 60 (~32 dano)"; power-up =
+  // badge colorido com o efeito ("ATQ +50% (1 turno)"). Sem classe de
+  // botão: o raio atravessa e acerta o botão.
+  buildDetail(option, value, x, y) {
+    const rowY = y + HUD_DETAIL.rowY;
+    const text = createEntity("a-text", {
+      class: "hud-option-detail",
+      value, align: "center", color: option.effect ? "#ffffff" : HUD_DETAIL_COLOR,
+      "wrap-count": 30, width: HUD_BUTTON.width,
+      position: vec3(x, rowY, 0.003),
+    });
+    if (option.effect) {
+      this.list.appendChild(createEntity("a-plane", {
+        class: "hud-badge",
+        width: HUD_DETAIL.badgeWidth, height: HUD_DETAIL.badgeHeight,
+        position: vec3(x, rowY, 0.001),
+        material: `color: ${HUD_BADGE_COLORS[option.effect === "heal" ? "heal" : option.stat]}; shader: flat`,
+      }));
+    }
+    this.list.appendChild(text);
+    return text;
+  },
+
+  // Dano estimado do ataque contra o PokeProf do adversário em campo
+  // (atributos e power-ups de agora), ou null.
+  estimateDamage(option) {
+    const battle = this.el.sceneEl.systems.battle;
+    if (typeof option.power !== "number" || !battle) {
+      return null;
+    }
+    const mine = battle.activeProf(this.data.player)?.prof;
+    const foe = battle.activeProf(battle.opponentOf(this.data.player))?.prof;
+    if (!mine || !foe || foe.isFainted()) {
+      return null;
+    }
+    return calculateDamage(fighter(mine), fighter(foe), option.power, TYPE_BEATS, DAMAGE_RULES);
   },
 
   // Botão travado pelo turno? Ataques e power-ups (e os botões que abrem
@@ -356,23 +486,6 @@ AFRAME.registerComponent("battle-hud", {
     this.lockKey = key;
     const onTurnPage = this.page === HUD_PAGES.ATTACK || this.page === HUD_PAGES.POWERUP;
     this.showPage(onTurnPage && this.isLocked({ action: HUD_ACTIONS.ATTACK }) ? HUD_PAGES.MAIN : this.page);
-  },
-
-  // Texto do status para uma ação do turno (TURN_ACTION).
-  describeAction(detail) {
-    const mine = detail.player === this.data.player;
-    const actor = mine ? detail.actorName : `${detail.actorName} (${playerInfo(detail.player).label})`;
-    if (detail.kind === HUD_ACTIONS.ATTACK) {
-      if (detail.fainted) {
-        return `${detail.targetName} desmaiou! -${detail.damage} HP`;
-      }
-      return `${actor} usou ${detail.label}! -${detail.damage} HP`;
-    }
-    const { powerup } = detail;
-    if (powerup.effect === "heal") {
-      return `${actor} usou ${detail.label}! +${detail.healed} HP`;
-    }
-    return `${actor} usou ${detail.label}: ${powerup.short} +${powerup.percent}%`;
   },
 
   choose(option) {

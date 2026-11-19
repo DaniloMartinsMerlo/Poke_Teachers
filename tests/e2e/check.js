@@ -305,6 +305,7 @@ async function run() {
   const actions = [];
   scene.addEventListener("turnaction", (e) => actions.push(e.detail));
   await press("attack");
+  out.attackDetails = [...hud.querySelectorAll(".hud-option-detail")].map((t) => t.getAttribute("value"));
   await press("prova-surpresa");
   out.turnWaitingStatus = status();
   out.turnAttackLocked = buttonLocked("attack");
@@ -314,10 +315,14 @@ async function run() {
   out.lockedAttackStaysMain = hud.dataset.page;
   // J2 escolhe: o turno resolve; o mais rápido primeiro (Rodinha 70 > Fabi 60).
   out.p2ChoiceAccepted = battle.choose("p2", { kind: "attack", id: "chamada-oral" });
+  for (let i = 0; i < 45; i++) await frame(); // 0,5 s + um pouco: 1ª ação
+  out.calloutsAfterFirstAction = [...document.querySelectorAll(".battle-callout-text")].map((t) => t.getAttribute("value"));
   out.resolvingStatus = status();
   out.switchLockedWhileResolving = buttonLocked("switch");
   await until(() => !battle.isResolving(), 300);
   out.turnOrder = actions.map((a) => a.player);
+  out.logLines = [...hud.querySelectorAll(".hud-log-line")].map((t) => t.getAttribute("value")).filter(Boolean);
+  out.logRightOfPanel = hud.querySelector(".hud-log").object3D.position.x > 0.2;
   out.cardHpAfterAttack = hpText();
   out.opponentCardHpAfterAttack = opponentCard()?.querySelector(".hp-text").getAttribute("value");
   out.hpBarScale = +p2Card.hpBar.object3D.scale.x.toFixed(2);
@@ -325,6 +330,8 @@ async function run() {
   // Power-up: Feriado do J1 vale no turno seguinte; J2 cura na hora.
   const p2HpBeforeHeal = p2Ball.components.pokeprof.prof.hp;
   await press("powerup");
+  out.powerupBadges = [...hud.querySelectorAll(".hud-option-detail")].map((t) => t.getAttribute("value"));
+  out.powerupBadgeCount = hud.querySelectorAll(".hud-badge").length;
   await press("feriado");
   battle.choose("p2", { kind: "powerup", id: "intervalo" });
   await until(() => !battle.isResolving(), 300);
@@ -360,7 +367,7 @@ async function run() {
   await press("chamada-oral");
   battle.choose("p2", { kind: "attack", id: "prova-surpresa" });
   await until(() => foeProf.prof.isFainted(), 300);
-  out.faintStatus = status();
+  out.faintLog = [...hud.querySelectorAll(".hud-log-line")].map((t) => t.getAttribute("value")).filter(Boolean).slice(-2);
   out.foeFainted = foeProf.prof.isFainted();
   out.foeCardShowsFainted = opponentCard()?.querySelector(".hp-text").getAttribute("value");
   out.foeStillOutDuringDelay = pokemonsOf("p2");

@@ -152,6 +152,15 @@ O WebXR só funciona em HTTPS. O Caddy gera um certificado com uma autoridade ce
 
 Quando o jogador alterna entre as mãos e os controles, o jogo detecta a mudança sozinho.
 
+### Como funciona a batalha
+
+- Você joga contra o computador (CPU), que fica do outro lado do campo. A CPU espera você lançar o primeiro PokeProf e então arremessa um dos dela.
+- Cada PokeProf tem um **tipo**: Rodinha é **Fogo**, Fabi é **Grama** e Murilo é **Água**. Fogo vence Grama, Grama vence Água e Água vence Fogo.
+- **Turnos:** cada jogador escolhe uma ação no menu de batalha, um **ataque** ou um **power-up**. Nada acontece até os dois escolherem. Depois, o PokeProf mais rápido age primeiro. Se ele derrubar o adversário, o outro não age.
+- **Power-ups** gastam o turno. *Ponto Extra* (+50% de ataque), *Cola Liberada* (+80% de velocidade) e *Feriado* (+100% de defesa) valem só no turno seguinte. *Intervalo* cura 35% da vida na hora.
+- PokeProf com a vida zerada volta para a pokébola e não pode mais lutar. Lance outro.
+- Quem ficar sem PokeProfs perde. O menu mostra o resultado e o botão **Jogar de novo**.
+
 ### Estrutura de pastas
 
 ```
@@ -163,7 +172,7 @@ Quando o jogador alterna entre as mãos e os controles, o jogo detecta a mudanç
 │       ├── main.js       importa todos os componentes
 │       ├── config/       constantes, arena, física, jogadores, professores
 │       ├── domain/       regras do jogo puras (sem A-Frame), testáveis no Node
-│       ├── systems/      estado global da cena (física, modo de entrada)
+│       ├── systems/      estado global da cena (física, modo de entrada, batalha/turnos)
 │       ├── components/   componentes A-Frame (cena, interação, locomoção, jogo…)
 │       └── utils/        funções auxiliares
 ├── tests/
@@ -191,9 +200,9 @@ O `npm test` também roda no GitHub Actions antes de cada deploy. Se falhar, o s
 
 ### Balanceamento dos professores
 
-Vida, ataque, defesa e velocidade de cada professor ficam em [site/src/config/teachers.js](site/src/config/teachers.js). O mesmo arquivo define a vantagem de tipo, no estilo pedra-papel-tesoura. Multiplicadores de dano e ataques ficam em [site/src/config/battle.js](site/src/config/battle.js).
+Vida, ataque, defesa, velocidade e tipo de cada professor ficam em [site/src/config/teachers.js](site/src/config/teachers.js). O mesmo arquivo define qual tipo vence qual, no estilo pedra-papel-tesoura. Multiplicadores de dano, ataques, power-ups, tempos do turno e o comportamento da CPU ficam em [site/src/config/battle.js](site/src/config/battle.js).
 
-Depois de mudar os números, rode `npm test`. O teste de balanceamento simula todos os duelos e falha se algum professor deixar de vencer quem deveria.
+Depois de mudar os números, rode `npm test`. O teste de balanceamento simula os duelos e falha se algum professor deixar de vencer o tipo que ele deveria vencer.
 
 ---
 

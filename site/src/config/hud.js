@@ -40,7 +40,9 @@ export const HUD_COLORS = Object.freeze({
   disabled: "#5b5f66",
 });
 
-export const HUD_PAGES = Object.freeze({ MAIN: "main", ATTACK: "attack", POWERUP: "powerup" });
+export const HUD_PAGES = Object.freeze({
+  MAIN: "main", ATTACK: "attack", POWERUP: "powerup", GAME_OVER: "gameover",
+});
 
 export const HUD_ACTIONS = Object.freeze({
   ATTACK: "attack",
@@ -48,6 +50,7 @@ export const HUD_ACTIONS = Object.freeze({
   SWITCH: "switch",
   GIVE_UP: "giveup",
   BACK: "back",
+  PLAY_AGAIN: "playagain",
 });
 
 export const MAIN_OPTIONS = Object.freeze([
@@ -56,5 +59,17 @@ export const MAIN_OPTIONS = Object.freeze([
   { action: HUD_ACTIONS.SWITCH, label: "Trocar PokeProf" },
   { action: HUD_ACTIONS.GIVE_UP, label: "Desistir" },
 ]);
+
+export const GAME_OVER_OPTIONS = Object.freeze([
+  { action: HUD_ACTIONS.PLAY_AGAIN, label: "Jogar de novo" },
+]);
+
+export const HUD_TEXTS = Object.freeze({
+  waiting: "Aguardando adversario...",
+  resolving: "Resolvendo o turno...",
+  win: "Voce venceu!",
+  lose: "Voce perdeu!",
+});
+export const HUD_RESULT_COLORS = Object.freeze({ win: "#4cd964", lose: "#ff6b5e" });
 
 // Ataques e power-ups do menu: config/battle.js.

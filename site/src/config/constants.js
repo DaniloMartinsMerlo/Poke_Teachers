@@ -18,6 +18,9 @@ export const POINTABLE_SELECTOR = `${GRABBABLE_SELECTOR}, .${HUD_BUTTON_CLASS}`;
 // Bola voltando sozinha para o suporte: ninguém pode pegá-la no caminho.
 export const RETURNING_ATTRIBUTE = "data-returning";
 
+// Bola que nenhuma pessoa pode pegar (as da CPU).
+export const NO_GRAB_ATTRIBUTE = "data-no-grab";
+
 export const MOUSE_CURSOR_ID = "mouse-cursor";
 
 export const HANDS = Object.freeze(["left", "right"]);
@@ -52,9 +55,18 @@ export const EVENTS = Object.freeze({
   POKEPROF_CHANGED: "pokeprofchanged",
   // O PokeProf da bola chegou a 0 de vida (emitido na bola, sobe à cena).
   POKEPROF_FAINTED: "pokeproffainted",
-  // Um ataque acertou (detail: attackerPlayer, defenderPlayer, attacker,
-  // defender, attackLabel, damage, hp, fainted).
-  POKEMON_DAMAGED: "pokemondamaged",
+  // Turnos (sistema "battle"). Algo mudou no estado do turno: escolhas,
+  // resolução, fim de jogo (detail: player que escolheu, se houver).
+  TURN_CHANGED: "turnchanged",
+  // As duas escolhas foram feitas: o turno começa a resolver.
+  TURN_STARTED: "turnstarted",
+  // Uma ação do turno foi aplicada (detail: ver domain/turn.js →
+  // performAction, mais `actorName`/`targetName`).
+  TURN_ACTION: "turnaction",
+  // O turno terminou (power-ups usados nele passam a valer).
+  TURN_RESOLVED: "turnresolved",
+  // Alguém perdeu todos os PokeProfs (detail: winner, loser).
+  GAME_OVER: "gameover",
 });
 
 // Quadros muito longos (aba em segundo plano) não podem gerar saltos.

@@ -1,4 +1,6 @@
-import { EVENTS, GRABBABLE_SELECTOR, HELD_ATTRIBUTE, RETURNING_ATTRIBUTE } from "../../config/constants.js";
+import {
+  EVENTS, GRABBABLE_SELECTOR, HELD_ATTRIBUTE, NO_GRAB_ATTRIBUTE, RETURNING_ATTRIBUTE,
+} from "../../config/constants.js";
 import { findNearest } from "../../domain/nearest.js";
 
 // Estado "segurado" compartilhado por todos os pegadores (pinça, controle
@@ -31,8 +33,9 @@ export function moveAlongHoldLine(object3D, distance) {
   position.setLength(distance);
 }
 
+// Bolas da CPU (NO_GRAB_ATTRIBUTE) não podem ser pegas por pessoas.
 export const isFreeGrabbable = (el) =>
-  el.matches(GRABBABLE_SELECTOR) && !isHeld(el) && !isReturning(el);
+  el.matches(GRABBABLE_SELECTOR) && !isHeld(el) && !isReturning(el) && !el.hasAttribute(NO_GRAB_ATTRIBUTE);
 
 export function freeGrabbables(sceneEl) {
   return [...sceneEl.querySelectorAll(GRABBABLE_SELECTOR)].filter(isFreeGrabbable);

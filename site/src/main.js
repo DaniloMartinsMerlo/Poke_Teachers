@@ -33,6 +33,7 @@ import "./components/game/controller-reset.js";
 import "./components/game/keyboard-reset.js";
 import "./components/game/battle-hud.js";
 import "./components/game/pokeprof.js";
+import "./components/game/cpu-player.js";
 
 import "./components/player/player-hand.js";
 import "./components/player/player-controller.js";

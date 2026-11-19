@@ -14,12 +14,12 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   seguindo o corpo como o HUD. Volta a aparecer na bola quando ele é
   recolhido. O do adversário também aparece, acima do
   seu.
-- [ ] **README.** Desenvolver o `README.md`: o que é o projeto, como rodar
+- [x] **README.** Desenvolver o `README.md`: o que é o projeto, como rodar
   (`docker compose up --build`, certificado HTTPS, acesso pelo Quest),
   controles (mãos, controles, teclado/mouse), estrutura de pastas, testes
   (`npm test`, `npm run test:e2e`) e onde balancear os professores
   (`site/src/config/teachers.js`).
-- [ ] **Sistema de turnos + adversário computador (CPU).** Fazer as duas
+- [x] **Sistema de turnos + adversário computador (CPU).** Fazer as duas
   coisas juntas: uma precisa da outra.
   - **Turnos:**
     - Cada jogador escolhe **uma** ação por turno para o PokeProf em
@@ -56,7 +56,7 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   - Testes: domínio (transições da máquina de estados, resolução do turno
     com ordem por velocidade, espera pelas duas escolhas) e e2e (partida
     completa contra a CPU até alguém perder todos).
-- [ ] **Power-ups.** ⚠️ Depende do **sistema de turnos**: só começar
+- [x] **Power-ups.** ⚠️ Depende do **sistema de turnos**: só começar
   depois dele. Hoje os 4 botões só mostram mensagem
   (`POWERUPS` em `site/src/config/battle.js`).
   - **Efeitos** (um por botão; valores em `config/battle.js` para
@@ -84,21 +84,33 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
 - [x] **PokeProf com HP zerado volta para a pokébola.** Ao desmaiar,
   recolher com a mesma animação do "Trocar PokeProf" (bola voa de volta
   ao suporte). A bola de um desmaiado não abre de novo até o reset.
-- [ ] **Fim de jogo.** O que acontece quando todos os PokeProfs de um
+- [x] **Fim de jogo.** O que acontece quando todos os PokeProfs de um
   jogador desmaiam: anunciar o vencedor (placar `arena-scoreboard`?),
   travar o HUD, oferecer recomeçar. É o fim da partida contra a CPU
   (item de turnos + CPU).
 
 ## Batalha
 
-- [ ] **Desistir** (hoje não faz nada).
+- [ ] **Dois jogadores na mesma partida, ao mesmo tempo.** Pensar em um
+  jeito de duas pessoas (dois headsets/navegadores) entrarem e jogarem a
+  mesma batalha: sincronizar bolas, PokeProfs em campo, escolhas do turno
+  e resultado entre os dois (ex.: servidor WebSocket no próprio contêiner,
+  ou WebRTC ponto a ponto; quem resolve o turno — servidor ou um dos
+  jogadores como "anfitrião"). O J2 hoje é a CPU (`cpu-player`); o
+  `battle-hud` já aceita `player: p2`.
+- [ ] **Trocar PokeProf gasta o turno?** Hoje trocar é livre (fora da
+  resolução) e apaga a escolha feita; no Pokémon trocar gasta a vez.
+- [ ] **Desistir** (hoje não faz nada; dá para reusar o fim de jogo).
 - [ ] HUD do **jogador 2** humano (`battle-hud` já aceita `player: p2`),
-  para dois jogadores. A CPU está no item de turnos.
+  para dois jogadores (ver item acima).
+- [ ] Ajustar a CPU depois de jogar: tempo "pensando", chance de
+  power-up (25%), mira do arremesso (`CPU` em `config/battle.js`).
 - [ ] Definir os professores do adversário quando houver mais imagens
   (hoje são os mesmos 3, em outra ordem).
 
 ## Interação e VR
 
+- [x] Pokébola segurada atravessava paredes e o chão.
 - [ ] Mãos rastreadas não mostram a prévia da pokébola (não têm raio):
   mostrar quando a mão chega perto.
 - [ ] Só com as mãos não dá para andar nem resetar (sem analógico nem
@@ -113,6 +125,10 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
 
 ## Validar no Quest 3
 
+- [ ] Bola segurada contra parede/chão/suporte: desliza rente sem
+  tremer? Volta para a mão ao afastar?
+- [ ] Partida contra a CPU: ritmo do turno (esperas), mensagens do HUD,
+  cartão com power-up e tela de fim de jogo legíveis.
 - [ ] Pinça e troca mão ↔ controle; colisão andando de verdade.
 - [ ] Colisões dos arremessos contra arquibancadas e torres.
 - [ ] HUD: legibilidade, pinça nos botões, conforto ao seguir o corpo.

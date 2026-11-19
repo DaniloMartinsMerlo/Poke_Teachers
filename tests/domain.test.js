@@ -130,6 +130,9 @@ test("HUD: navegação entre páginas e ações anunciadas", () => {
     { page: "main", emit: { action: "attack", id: "chamada-oral" } });
   assert.deepEqual(chooseHudOption("powerup", { id: "feriado" }),
     { page: "main", emit: { action: "powerup", id: "feriado" } });
+  assert.deepEqual(chooseHudOption("gameover", { action: "playagain" }),
+    { page: "main", emit: { action: "playagain" } });
+  assert.deepEqual(chooseHudOption("gameover", { action: "attack" }), { page: "gameover", emit: null });
 });
 
 test("HUD: folga ignora inclinar a cabeça e arrasta ao andar", () => {
@@ -157,8 +160,17 @@ import { Pokeprof } from "../site/src/domain/pokeprof.js";
 import {
   advantageMultiplier, calculateDamage, isAdvantageCycle, simulateDuel, turnOrder,
 } from "../site/src/domain/combat.js";
-import { BEATS, TEACHER_NAMES, teacherStats } from "../site/src/config/teachers.js";
-import { BALANCE_TEST_POWER, DAMAGE_RULES } from "../site/src/config/battle.js";
+import {
+  TEACHER_NAMES, TYPES, TYPE_BEATS, teacherStats, teacherType,
+} from "../site/src/config/teachers.js";
+import { ATTACKS, BALANCE_TEST_POWER, DAMAGE_RULES, POWERUPS } from "../site/src/config/battle.js";
+import {
+  ACTION_KINDS, TurnChoices, isTeamDefeated, performAction, planTurn, resolveTurn,
+} from "../site/src/domain/turn.js";
+import {
+  CPU_EFFECTS, CPU_STATES, ballisticVelocity, nextCpuState, pickAction, pickProf,
+} from "../site/src/domain/cpu.js";
+import { extendSegment, pushOutOfPlane } from "../site/src/domain/held.js";
 
 test("PokeProf: dano não passa de 0, cura não passa do máximo", () => {
   const p = new Pokeprof("X", { hp: 100, attack: 50, defense: 50, speed: 50 });
@@ -171,16 +183,29 @@ test("PokeProf: dano não passa de 0, cura não passa do máximo", () => {
   assert.equal(p.hp, 100);
 });
 
-test("dano: defesa reduz com retorno decrescente, vantagem multiplica", () => {
+test("dano: defesa reduz com retorno decrescente, vantagem de tipo multiplica", () => {
   const rules = { attackScale: 50, defenseScale: 100, strong: 1.5, weak: 0.5, minDamage: 1 };
-  const atk = { name: "A", stats: { attack: 50 } };
-  const def = (defense, name = "B") => ({ name, stats: { defense } });
-  assert.equal(calculateDamage(atk, def(0), 40, {}, rules), 40);
-  assert.equal(calculateDamage(atk, def(100), 40, {}, rules), 20);
-  assert.equal(calculateDamage(atk, def(100), 40, { A: "B" }, rules), 30);
-  assert.equal(calculateDamage(atk, def(100), 40, { B: "A" }, rules), 10);
-  assert.equal(calculateDamage(atk, def(100000), 40, {}, rules), 1);
-  assert.equal(advantageMultiplier("A", "C", { A: "B" }, rules), 1);
+  const atk = { type: "fogo", stats: { attack: 50 } };
+  const def = (defense, type = "x") => ({ type, stats: { defense } });
+  const beats = { fogo: "grama" };
+  assert.equal(calculateDamage(atk, def(0), 40, beats, rules), 40);
+  assert.equal(calculateDamage(atk, def(100), 40, beats, rules), 20);
+  assert.equal(calculateDamage(atk, def(100, "grama"), 40, beats, rules), 30);
+  assert.equal(calculateDamage({ ...atk, type: "grama" }, def(100, "fogo"), 40, beats, rules), 10);
+  assert.equal(calculateDamage(atk, def(100000), 40, beats, rules), 1);
+  assert.equal(advantageMultiplier("fogo", "fogo", beats, rules), 1);
+  assert.equal(advantageMultiplier(null, "grama", beats, rules), 1);
+});
+
+test("tipos: Rodinha fogo, Fabi grama, Murilo agua; Fogo > Grama > Agua > Fogo", () => {
+  assert.equal(teacherType("Rodinha"), "fogo");
+  assert.equal(teacherType("Fabi"), "grama");
+  assert.equal(teacherType("Murilo"), "agua");
+  assert.equal(TYPE_BEATS.fogo, "grama");
+  assert.equal(TYPE_BEATS.grama, "agua");
+  assert.equal(TYPE_BEATS.agua, "fogo");
+  assert.ok(isAdvantageCycle(TYPE_BEATS, Object.keys(TYPES)));
+  assert.equal(isAdvantageCycle({ A: "B", B: "A", C: "A" }, ["A", "B", "C"]), false);
 });
 
 test("velocidade: o mais rápido ataca primeiro; empate sorteia", () => {
@@ -193,17 +218,213 @@ test("velocidade: o mais rápido ataca primeiro; empate sorteia", () => {
   assert.deepEqual(turnOrder(tieA, tieB, () => 0.9), [tieB, tieA]);
 });
 
-test("config: vantagens formam o ciclo 1 > 2 > 3 > 1", () => {
-  assert.ok(isAdvantageCycle(BEATS, TEACHER_NAMES));
-  assert.equal(isAdvantageCycle({ A: "B", B: "A", C: "A" }, ["A", "B", "C"]), false);
-});
-
-// Rode `npm test` depois de mudar config/teachers.js ou config/battle.js.
+// Rode `npm test` depois de mudar config/teachers.js ou config/battle.js:
+// cada tipo vence o tipo que ele bate, nos dois sentidos.
+const fighterOf = (name) => ({ name, type: teacherType(name), stats: teacherStats(name) });
 for (const winner of TEACHER_NAMES) {
-  const loser = BEATS[winner];
+  const loser = TEACHER_NAMES.find((name) => teacherType(name) === TYPE_BEATS[teacherType(winner)]);
   test(`balanceamento: ${winner} vence ${loser} nos dois sentidos`, () => {
-    const args = [BALANCE_TEST_POWER, BEATS, DAMAGE_RULES];
-    assert.equal(simulateDuel(winner, teacherStats(winner), loser, teacherStats(loser), ...args), winner);
-    assert.equal(simulateDuel(loser, teacherStats(loser), winner, teacherStats(winner), ...args), winner);
+    const args = [BALANCE_TEST_POWER, TYPE_BEATS, DAMAGE_RULES];
+    assert.equal(simulateDuel(fighterOf(winner), fighterOf(loser), ...args), winner);
+    assert.equal(simulateDuel(fighterOf(loser), fighterOf(winner), ...args), winner);
   });
 }
+
+// ---------------------------------------------------------------- turnos
+const RULES = { attacks: ATTACKS, powerups: POWERUPS, typeBeats: TYPE_BEATS, rules: DAMAGE_RULES };
+const prof = (name) => new Pokeprof(name, teacherStats(name), teacherType(name));
+const side = (player, p, kind, id) => ({ player, prof: p, choice: { kind, id } });
+const attack = (player, p, id = "prova-surpresa") => side(player, p, ACTION_KINDS.ATTACK, id);
+const powerup = (player, p, id) => side(player, p, ACTION_KINDS.POWERUP, id);
+
+test("turno: espera as duas escolhas; uma escolha por jogador", () => {
+  const choices = new TurnChoices();
+  assert.equal(choices.isReady(["p1", "p2"]), false);
+  assert.equal(choices.choose("p1", { kind: "attack", id: "a" }), true);
+  assert.equal(choices.choose("p1", { kind: "attack", id: "b" }), false);
+  assert.equal(choices.get("p1").id, "a");
+  assert.equal(choices.isReady(["p1", "p2"]), false);
+  choices.choose("p2", { kind: "powerup", id: "c" });
+  assert.equal(choices.isReady(["p1", "p2"]), true);
+  choices.clear("p1");
+  assert.equal(choices.isReady(["p1", "p2"]), false);
+  choices.clear();
+  assert.equal(choices.has("p2"), false);
+});
+
+test("turno: o mais rápido age primeiro e os dois atacam", () => {
+  const rodinha = prof("Rodinha"); // VEL 70
+  const murilo = prof("Murilo"); // VEL 40
+  const results = resolveTurn([attack("p1", murilo), attack("p2", rodinha)], RULES);
+  assert.deepEqual(results.map((r) => r.player), ["p2", "p1"]);
+  assert.ok(rodinha.hp < rodinha.maxHp() && murilo.hp < murilo.maxHp());
+  assert.equal(results[0].damage, murilo.maxHp() - murilo.hp);
+});
+
+test("turno: se o primeiro derruba o outro, o segundo não age", () => {
+  const rodinha = prof("Rodinha");
+  const murilo = prof("Murilo");
+  murilo.takeDamage(murilo.hp - 1);
+  const results = resolveTurn([attack("p1", murilo), attack("p2", rodinha)], RULES);
+  assert.equal(results.length, 1);
+  assert.equal(results[0].fainted, true);
+  assert.equal(rodinha.hp, rodinha.maxHp());
+});
+
+test("power-up: não vale no turno do uso; vale no seguinte; expira depois", () => {
+  const fabi = prof("Fabi");
+  const murilo = prof("Murilo");
+  // Turno 1: Murilo usa Feriado (DEF +100%) e Fabi ataca: dano normal.
+  const normal = resolveTurn([attack("p1", fabi), powerup("p2", murilo, "feriado")], RULES)[0].damage;
+  assert.equal(murilo.activeBoost.id, "feriado");
+  assert.equal(murilo.effectiveStats().defense, 120);
+  // Turno 2: com a defesa dobrada, o mesmo ataque tira menos.
+  const before = murilo.hp;
+  resolveTurn([attack("p1", fabi), attack("p2", murilo, "chamada-oral")], RULES);
+  assert.ok(before - murilo.hp < normal);
+  // Turno 3: expirou.
+  assert.equal(murilo.activeBoost, null);
+  assert.equal(murilo.effectiveStats().defense, 60);
+});
+
+test("power-up: velocidade faz o mais lento agir primeiro no turno seguinte", () => {
+  const rodinha = prof("Rodinha"); // 70
+  const murilo = prof("Murilo"); // 40 → 72 com Cola Liberada
+  const first = resolveTurn([powerup("p1", murilo, "cola-liberada"), attack("p2", rodinha)], RULES);
+  assert.equal(first[0].player, "p2"); // no turno do uso, ainda é o mais lento
+  assert.equal(murilo.effectiveStats().speed, 72);
+  const order = planTurn([attack("p1", murilo), attack("p2", rodinha)]);
+  assert.equal(order[0][0].player, "p1");
+});
+
+test("power-up: ataque aumentado tira mais; cura vale na hora sem passar do máximo", () => {
+  const fabi = prof("Fabi");
+  const plain = prof("Murilo");
+  const boosted = prof("Murilo");
+  const target = () => prof("Rodinha");
+  const t1 = target();
+  const dmgPlain = performAction(attack("p1", plain), side("p2", t1), RULES).damage;
+  boosted.queueBoost(POWERUPS.find((p) => p.id === "ponto-extra"));
+  boosted.endTurn();
+  const t2 = target();
+  const dmgBoosted = performAction(attack("p1", boosted), side("p2", t2), RULES).damage;
+  assert.ok(dmgBoosted > dmgPlain);
+  fabi.takeDamage(10);
+  const heal = performAction(powerup("p1", fabi, "intervalo"), side("p2", t1), RULES);
+  assert.equal(heal.healed, 10);
+  assert.equal(fabi.hp, fabi.maxHp());
+  fabi.takeDamage(90);
+  assert.equal(performAction(powerup("p1", fabi, "intervalo"), side("p2", t1), RULES).healed, 35);
+});
+
+test("fim de jogo: time perde quando todos desmaiam", () => {
+  const a = prof("Fabi");
+  const b = prof("Murilo");
+  assert.equal(isTeamDefeated([a, b]), false);
+  a.takeDamage(1000);
+  assert.equal(isTeamDefeated([a, b]), false);
+  b.takeDamage(1000);
+  assert.equal(isTeamDefeated([a, b]), true);
+  assert.equal(isTeamDefeated([]), false);
+});
+
+// ------------------------------------------------------------------- CPU
+const view = (extra = {}) => ({
+  gameOver: false, opponentOnField: false, ownOnField: false, ballInFlight: false,
+  canChoose: false, hasChosen: false, ready: false, ...extra,
+});
+
+test("CPU: espera o jogador, escolhe e arremessa um PokeProf", () => {
+  assert.equal(nextCpuState(CPU_STATES.WAITING, view()).state, CPU_STATES.WAITING);
+  assert.equal(nextCpuState(CPU_STATES.WAITING, view({ opponentOnField: true })).state, CPU_STATES.CHOOSE_PROF);
+  assert.deepEqual(nextCpuState(CPU_STATES.CHOOSE_PROF, view({ opponentOnField: true })),
+    { state: CPU_STATES.CHOOSE_PROF, effect: null });
+  assert.deepEqual(nextCpuState(CPU_STATES.CHOOSE_PROF, view({ ready: true })),
+    { state: CPU_STATES.THROWING, effect: CPU_EFFECTS.THROW });
+  assert.equal(nextCpuState(CPU_STATES.THROWING, view({ ballInFlight: true })).state, CPU_STATES.THROWING);
+  assert.equal(nextCpuState(CPU_STATES.THROWING, view({ ownOnField: true })).state, CPU_STATES.CHOOSE_ACTION);
+  // Não soltou a tempo: tenta de novo.
+  assert.equal(nextCpuState(CPU_STATES.THROWING, view()).state, CPU_STATES.CHOOSE_PROF);
+});
+
+test("CPU: pensa, escolhe, espera o turno e volta a escolher", () => {
+  const onField = { ownOnField: true, opponentOnField: true };
+  assert.equal(nextCpuState(CPU_STATES.CHOOSE_ACTION, view({ ...onField, canChoose: true })).state,
+    CPU_STATES.CHOOSE_ACTION);
+  assert.deepEqual(nextCpuState(CPU_STATES.CHOOSE_ACTION, view({ ...onField, canChoose: true, ready: true })),
+    { state: CPU_STATES.WAIT_TURN, effect: CPU_EFFECTS.CHOOSE });
+  // Adversário sem PokeProf (desmaiou): não escolhe.
+  assert.equal(nextCpuState(CPU_STATES.CHOOSE_ACTION, view({ ownOnField: true, ready: true })).state,
+    CPU_STATES.CHOOSE_ACTION);
+  assert.equal(nextCpuState(CPU_STATES.WAIT_TURN, view({ ...onField, hasChosen: true })).state, CPU_STATES.WAIT_TURN);
+  assert.equal(nextCpuState(CPU_STATES.WAIT_TURN, view(onField)).state, CPU_STATES.WAIT_TURN); // resolvendo
+  assert.equal(nextCpuState(CPU_STATES.WAIT_TURN, view({ ...onField, canChoose: true })).state,
+    CPU_STATES.CHOOSE_ACTION);
+});
+
+test("CPU: PokeProf derrotado → escolhe outro; fim de jogo para; reset recomeça", () => {
+  assert.equal(nextCpuState(CPU_STATES.WAIT_TURN, view({ opponentOnField: true })).state, CPU_STATES.CHOOSE_PROF);
+  assert.equal(nextCpuState(CPU_STATES.CHOOSE_ACTION, view()).state, CPU_STATES.CHOOSE_PROF);
+  for (const state of Object.values(CPU_STATES)) {
+    assert.equal(nextCpuState(state, view({ gameOver: true })).state, CPU_STATES.DONE);
+  }
+  assert.equal(nextCpuState(CPU_STATES.DONE, view()).state, CPU_STATES.WAITING);
+});
+
+test("CPU: sorteia PokeProf entre os de pé", () => {
+  assert.equal(pickProf([], () => 0), null);
+  assert.equal(pickProf(["a", "b", "c"], () => 0.5), "b");
+  assert.equal(pickProf(["a", "b", "c"], () => 0.9999), "c");
+});
+
+test("CPU: power-up com 25% de chance, sem repetir o último nem curar com vida cheia", () => {
+  const seq = (...values) => { let i = 0; return () => values[i++ % values.length]; };
+  const base = { attacks: ATTACKS, powerups: POWERUPS, powerupChance: 0.25 };
+  assert.equal(pickAction({ ...base, random: seq(0.3, 0) }).kind, ACTION_KINDS.ATTACK);
+  assert.equal(pickAction({ ...base, random: seq(0.2, 0) }).kind, ACTION_KINDS.POWERUP);
+  for (let k = 0; k < 20; k++) {
+    const choice = pickAction({ ...base, lastPowerupId: "ponto-extra", hpFull: true, random: seq(0.1, k / 20) });
+    assert.equal(choice.kind, ACTION_KINDS.POWERUP);
+    assert.notEqual(choice.id, "ponto-extra");
+    assert.notEqual(choice.id, "intervalo");
+  }
+  // Com muitas tentativas, ~25% são power-ups.
+  let powerups = 0;
+  let state = 1;
+  const lcg = () => { state = (state * 16807) % 2147483647; return state / 2147483647; };
+  for (let k = 0; k < 4000; k++) {
+    if (pickAction({ ...base, random: lcg }).kind === ACTION_KINDS.POWERUP) powerups++;
+  }
+  assert.ok(Math.abs(powerups / 4000 - 0.25) < 0.03);
+});
+
+test("CPU: arremesso em arco chega ao alvo", () => {
+  const from = { x: -0.6, y: 1.36, z: -7 };
+  const to = { x: 1, y: 0.09, z: -3.5 };
+  const g = -9.82;
+  const t = 1.1;
+  const v = ballisticVelocity(from, to, t, g);
+  assert.ok(v.y > 0);
+  const at = (k) => from.y + v.y * k + 0.5 * g * k * k;
+  assert.ok(Math.abs(at(t) - to.y) < 1e-9);
+  assert.ok(Math.abs(from.x + v.x * t - to.x) < 1e-9 && Math.abs(from.z + v.z * t - to.z) < 1e-9);
+});
+
+// ---------------------------------------------------- bola segurada
+test("bola segurada: empurrada para fora da parede, desliza rente a ela", () => {
+  const wall = { x: 7, y: 0, z: 0 };
+  const normal = { x: -1, y: 0, z: 0 };
+  const p = pushOutOfPlane({ x: 7.5, y: 1, z: 2 }, wall, normal, 0.1);
+  assert.ok(Math.abs(p.x - 6.9) < 1e-9);
+  assert.equal(p.y, 1);
+  assert.equal(p.z, 2);
+  assert.deepEqual(pushOutOfPlane({ x: 5, y: 1, z: 2 }, wall, normal, 0.1), { x: 5, y: 1, z: 2 });
+  const ground = pushOutOfPlane({ x: 0, y: -0.5, z: 0 }, { x: 0, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, 0.088);
+  assert.ok(Math.abs(ground.y - 0.088) < 1e-9);
+});
+
+test("bola segurada: segmento prolongado pelo raio", () => {
+  const e = extendSegment({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, 0.1);
+  assert.ok(Math.abs(e.x - 1.1) < 1e-9);
+  assert.deepEqual(extendSegment({ x: 1, y: 1, z: 1 }, { x: 1, y: 1, z: 1 }, 0.1), { x: 1, y: 1, z: 1 });
+});

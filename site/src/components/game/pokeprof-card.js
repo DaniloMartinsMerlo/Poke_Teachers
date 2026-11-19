@@ -1,9 +1,10 @@
-import { BEATS, teacherImage } from "../../config/teachers.js";
+import { TYPES, TYPE_BEATS, teacherImage, teacherType, typeLabel } from "../../config/teachers.js";
 import { createEntity, vec3 } from "../../utils/entity.js";
 
 const HP_COLORS = Object.freeze({ high: "#4cd964", mid: "#ffd23f", low: "#ff3b30", empty: "#444444" });
 const BACKGROUND = "#222222";
 const STRONG_COLOR = "#9fd3ff";
+const BOOST_COLOR = "#ffd23f";
 // Faixa na borda esquerda com a cor do dono (m).
 const OWNER_STRIPE = 0.006;
 
@@ -24,9 +25,20 @@ export function hpColor(ratio) {
   return HP_COLORS.high;
 }
 
+/** Texto do power-up de atributo (ativo ou para o próximo turno), ou "". */
+export function boostLabel(prof) {
+  const boost = prof?.activeBoost || prof?.pendingBoost;
+  if (!boost) {
+    return "";
+  }
+  const when = prof.activeBoost ? "este turno" : "prox. turno";
+  return `${boost.label}: ${boost.short} +${boost.percent}% (${when})`;
+}
+
 /**
- * Cartão de um PokeProf: foto, nome, barra e número de vida, ATQ/DEF/VEL e
- * contra quem é forte. Não é um componente: quem usa (prévia da pokébola,
+ * Cartão de um PokeProf: foto, nome, barra e número de vida, ATQ/DEF/VEL
+ * (com o power-up ativo), tipo e contra qual tipo é forte; no formato
+ * horizontal (em campo), também o power-up. Não é um componente: quem usa (prévia da pokébola,
  * HUD) põe `card.el` na cena e chama `refresh(prof)` quando a vida muda.
  */
 export class PokeprofCard {
@@ -39,6 +51,7 @@ export class PokeprofCard {
    */
   constructor(name, layout = "vertical", options = {}) {
     this.name = name;
+    this.type = teacherType(name);
     this.layout = layout;
     this.width = options.width || LAYOUTS.horizontal.width;
     this.owner = options.owner || null;
@@ -78,7 +91,7 @@ export class PokeprofCard {
       barHeight: 0.022,
       hpText: row(-size / 2 - 0.115, ""),
       statsText: row(-size / 2 - 0.15, ""),
-      strongText: row(-size / 2 - 0.185, this.strongLabel(), { color: STRONG_COLOR }),
+      strongText: row(-size / 2 - 0.185, this.strongLabel(), { color: this.typeColor() }),
     });
   }
 
@@ -98,12 +111,13 @@ export class PokeprofCard {
       height: this.height(),
       centerY: 0,
       image: { x: -width / 2 + padding + image / 2, size: image },
-      name: row(0.045, this.owner ? `${this.name} (${this.owner.label})` : this.name, { "wrap-count": 14 }),
-      barY: 0.021,
-      barHeight: 0.014,
-      hpText: row(-0.006, ""),
-      statsText: row(-0.029, ""),
-      strongText: row(-0.052, this.strongLabel(), { color: STRONG_COLOR }),
+      name: row(0.05, this.owner ? `${this.name} (${this.owner.label})` : this.name, { "wrap-count": 14 }),
+      barY: 0.028,
+      barHeight: 0.012,
+      hpText: row(0.006, ""),
+      statsText: row(-0.016, ""),
+      strongText: row(-0.038, this.strongLabel(), { color: this.typeColor() }),
+      boostText: row(-0.06, "", { color: BOOST_COLOR }),
     });
   }
 
@@ -119,6 +133,8 @@ export class PokeprofCard {
     this.hpText.classList.add("hp-text");
     this.statsText = parts.statsText;
     this.statsText.classList.add("stats-text");
+    this.boostText = parts.boostText || null;
+    this.boostText?.classList.add("boost-text");
     const ownerStripe = this.owner ? [createEntity("a-plane", {
       class: "owner-stripe",
       position: vec3(-parts.width / 2 + OWNER_STRIPE / 2, parts.centerY, -0.001),
@@ -147,11 +163,21 @@ export class PokeprofCard {
       this.hpText,
       this.statsText,
       parts.strongText,
+      ...(this.boostText ? [this.boostText] : []),
     ]);
   }
 
+  // "Tipo Fogo > Grama" (forte contra Grama).
   strongLabel() {
-    return BEATS[this.name] ? `Forte contra ${BEATS[this.name]}` : "";
+    if (!this.type) {
+      return "";
+    }
+    const beats = TYPE_BEATS[this.type];
+    return beats ? `Tipo ${typeLabel(this.type)} > ${typeLabel(beats)}` : `Tipo ${typeLabel(this.type)}`;
+  }
+
+  typeColor() {
+    return TYPES[this.type]?.color || STRONG_COLOR;
   }
 
   /** Atualiza vida e atributos. @param {import("../../domain/pokeprof.js").Pokeprof} prof */
@@ -160,11 +186,12 @@ export class PokeprofCard {
       return;
     }
     const ratio = prof.hpRatio();
-    const { attack, defense, speed } = prof.stats;
+    const { attack, defense, speed } = prof.effectiveStats ? prof.effectiveStats() : prof.stats;
     this.hpText.setAttribute("value", prof.isFainted()
       ? `HP 0/${prof.maxHp()} - Desmaiado`
       : `HP ${prof.hp}/${prof.maxHp()}`);
     this.statsText.setAttribute("value", `ATQ ${attack}  DEF ${defense}  VEL ${speed}`);
+    this.boostText?.setAttribute("value", boostLabel(prof));
     // A barra encolhe para a esquerda. Via setAttribute (e não object3D)
     // para valer mesmo se a entidade ainda não carregou: ao carregar, o
     // A-Frame reaplicaria a posição do atributo.

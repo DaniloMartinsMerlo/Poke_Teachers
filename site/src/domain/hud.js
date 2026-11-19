@@ -15,6 +15,11 @@ export function chooseHudOption(page, choice) {
   if (choice.action === ACTIONS.BACK) {
     return { page: PAGES.MAIN, emit: null };
   }
+  if (page === PAGES.GAME_OVER) {
+    return choice.action === ACTIONS.PLAY_AGAIN
+      ? { page: PAGES.MAIN, emit: { action: ACTIONS.PLAY_AGAIN } }
+      : { page, emit: null };
+  }
   if (page === PAGES.MAIN) {
     switch (choice.action) {
       case ACTIONS.ATTACK: return { page: PAGES.ATTACK, emit: null };

@@ -16,6 +16,9 @@ const report = (obj) => { const pre = document.createElement("pre"); pre.id = "e
 async function run() {
   const scene = document.querySelector("a-scene");
   step("start"); while (!scene.hasLoaded) await wait(50); step("loaded");
+  // CPU desligada: o J2 é controlado à mão até a partida completa no fim.
+  const cpuEl = scene.querySelector("[cpu-player]");
+  cpuEl.setAttribute("cpu-player", "enabled", false);
   for (let i = 0; i < 10; i++) await frame(); step("frames");
   const out = {};
   const balls = [...document.querySelectorAll(".grabbable")];
@@ -149,6 +152,31 @@ async function run() {
   out.reelParallelToLaser = +moved.dot(new THREE.Vector3(0, -0.6, -0.8)).toFixed(3);
   rightCtrl.setAttribute("raycaster", { origin: { x: 0, y: 0, z: 0 }, direction: { x: 0, y: 0, z: -1 } });
 
+  // Bola segurada não atravessa o chão nem a mureta (testado no meio do
+  // campo, longe dos suportes; controle no espaço do rig, em z = 7).
+  const ctrlHome = rightCtrl.object3D.position.clone();
+  const ballWorld3 = () => reelBall.object3D.getWorldPosition(new THREE.Vector3());
+  const moveCtrl = async (x, y, z, frames = 3) => {
+    rightCtrl.object3D.position.set(x, y, z);
+    for (let i = 0; i < frames; i++) await frame();
+  };
+  await moveCtrl(ctrlHome.x, 2.5, ctrlHome.z);
+  await moveCtrl(3, 2.5, -10);
+  reelBall.object3D.position.set(0, 0, -0.3);
+  await moveCtrl(3, 1, -10);
+  out.heldBallFollowsHand = +ballWorld3().distanceTo(new THREE.Vector3(3, 1, -3.3)).toFixed(3);
+  await moveCtrl(3, -1, -10);
+  out.heldBallAboveGroundY = +ballWorld3().y.toFixed(3);
+  await moveCtrl(3, 0.4, -10);
+  await moveCtrl(9, 0.4, -10);
+  out.heldBallInsideWallX = +ballWorld3().x.toFixed(3);
+  await moveCtrl(3, 0.4, -10);
+  // Voltou para a "pegada" original (30 cm à frente do controle).
+  out.heldBallBackInHandM = +reelBall.object3D.position.distanceTo(new THREE.Vector3(0, 0, -0.3)).toFixed(3);
+  await moveCtrl(ctrlHome.x, 2.5, -10);
+  await moveCtrl(ctrlHome.x, 2.5, ctrlHome.z);
+  await moveCtrl(ctrlHome.x, ctrlHome.y, ctrlHome.z, 1);
+
   // Encaixe: soltar perto do encaixe (livre) trava a bola nele.
   const slot = scene.querySelector("[ball-rack]").components["ball-rack"].slots[0];
   const snapBall = balls[1];
@@ -261,28 +289,58 @@ async function run() {
   out.opponentCardAboveMine = opponentCard() && fieldCard()
     ? opponentCard().object3D.position.y > fieldCard().object3D.position.y : false;
   out.opponentCardLabel = opponentCard()?.querySelector("a-text").getAttribute("value");
-  // Atributos e vida: card mostra cheio; ataque tira vida do adversário
-  // e o card dele mostra a diferença; reset cura.
+  // Atributos, tipo e vida no card.
+  const battle = scene.systems.battle;
+  const status = () => hud.querySelector(".hud-status").getAttribute("value");
+  const buttonLocked = (option) => hudButtons().find((b) => b.dataset.option === option)?.dataset.locked;
+  const until = async (cond, max) => { for (let i = 0; i < max && !cond(); i++) await frame(); return cond(); };
   const p2Ball = p2Rack.balls[0];
   const p2Card = p2Ball.components["pokemon-preview"].cardView;
   p2Card.refresh(p2Ball.components.pokeprof.prof);
   const hpText = () => p2Card.hpText.getAttribute("value");
   out.cardHpFull = hpText();
   out.cardStats = p2Card.statsText.getAttribute("value");
+  out.cardType = [...p2Card.el.querySelectorAll("a-text")].map((t) => t.getAttribute("value")).find((v) => v?.startsWith("Tipo"));
+  // Turno: escolher sozinho não aplica nada; HUD espera e trava.
+  const actions = [];
+  scene.addEventListener("turnaction", (e) => actions.push(e.detail));
   await press("attack");
   await press("prova-surpresa");
-  out.attackStatus = hud.querySelector(".hud-status").getAttribute("value");
+  out.turnWaitingStatus = status();
+  out.turnAttackLocked = buttonLocked("attack");
+  out.turnSwitchFreeWhileWaiting = buttonLocked("switch");
+  out.cardHpAfterChoiceOnly = hpText();
+  await press("attack");
+  out.lockedAttackStaysMain = hud.dataset.page;
+  // J2 escolhe: o turno resolve; o mais rápido primeiro (Rodinha 70 > Fabi 60).
+  out.p2ChoiceAccepted = battle.choose("p2", { kind: "attack", id: "chamada-oral" });
+  out.resolvingStatus = status();
+  out.switchLockedWhileResolving = buttonLocked("switch");
+  await until(() => !battle.isResolving(), 300);
+  out.turnOrder = actions.map((a) => a.player);
   out.cardHpAfterAttack = hpText();
   out.opponentCardHpAfterAttack = opponentCard()?.querySelector(".hp-text").getAttribute("value");
   out.hpBarScale = +p2Card.hpBar.object3D.scale.x.toFixed(2);
+  out.attackUnlockedAfterTurn = buttonLocked("attack");
+  // Power-up: Feriado do J1 vale no turno seguinte; J2 cura na hora.
+  const p2HpBeforeHeal = p2Ball.components.pokeprof.prof.hp;
+  await press("powerup");
+  await press("feriado");
+  battle.choose("p2", { kind: "powerup", id: "intervalo" });
+  await until(() => !battle.isResolving(), 300);
+  out.p2Healed = p2Ball.components.pokeprof.prof.hp - p2HpBeforeHeal;
+  out.p1BoostActive = p1Ball.components.pokeprof.prof.activeBoost?.id;
+  out.boostCardText = fieldCard()?.querySelector(".boost-text")?.getAttribute("value");
+  out.boostedDefenseShown = fieldCard()?.querySelector(".stats-text").getAttribute("value");
   await press("switch");
-  out.switchStatus = hud.querySelector(".hud-status").getAttribute("value");
+  out.switchStatus = status();
   out.switchBallReturning = p1Rack.balls[0].hasAttribute("data-returning");
   let peakY = 0;
   for (let i = 0; i < 100; i++) { await frame(); peakY = Math.max(peakY, p1Rack.balls[0].object3D.position.y); }
   out.switchArcPeakY = +peakY.toFixed(2);
   out.switchBallBackInSlotM = +p1Rack.balls[0].object3D.position.distanceTo(p1Rack.slots[0]).toFixed(3);
   out.p1AfterSwitch = pokemonsOf("p1");
+  out.boostClearedOnRecall = p1Ball.components.pokeprof.prof.activeBoost === null;
   out.hudFieldCardGoneAfterSwitch = !fieldCard();
   out.opponentCardStaysAfterSwitch = !!opponentCard();
   out.opponentCardMovedDown = opponentCard()
@@ -293,23 +351,27 @@ async function run() {
   out.p2StillOut = pokemonsOf("p2");
   await drop(p1Rack.balls[2], 0, 4);
   out.p1CanSendAnotherAfterSwitch = pokemonsOf("p1");
-  // Desmaio: ataque que zera a vida do adversário → ele volta para a bola
-  // (bola voa ao suporte) e não pode ser jogado de novo até o reset.
+  // Desmaio no turno: o adversário zera, volta para a bola (voa ao
+  // suporte) e não pode ser jogado de novo até o reset.
   const foeProf = p2Ball.components.pokeprof;
   foeProf.damage(foeProf.prof.hp - 1);
+  actions.length = 0;
   await press("attack");
   await press("chamada-oral");
-  out.faintStatus = hud.querySelector(".hud-status").getAttribute("value");
+  battle.choose("p2", { kind: "attack", id: "prova-surpresa" });
+  await until(() => foeProf.prof.isFainted(), 300);
+  out.faintStatus = status();
   out.foeFainted = foeProf.prof.isFainted();
   out.foeCardShowsFainted = opponentCard()?.querySelector(".hp-text").getAttribute("value");
   out.foeStillOutDuringDelay = pokemonsOf("p2");
+  out.noChoiceWhileFoeFainted = !battle.canChoose("p1");
   for (let i = 0; i < 60; i++) await frame(); // > FAINT_RECALL_DELAY (900 ms)
   out.foeReturning = p2Ball.hasAttribute("data-returning");
   out.foeRecalled = p2Ball.components["pokemon-release"].creature === null;
   for (let i = 0; i < 100; i++) await frame();
   out.foeBallBackInSlotM = +p2Ball.object3D.position.distanceTo(p2Rack.slots[0]).toFixed(3);
   out.foeCardGone = !opponentCard();
-  out.p2ActiveCleared = scene.systems.battle.activeBall("p2") === null;
+  out.p2ActiveCleared = battle.activeBall("p2") === null;
   await drop(p2Ball, 0, -4);
   out.faintedCantSendOut = pokemonsOf("p2");
   out.faintedBallReturning = p2Ball.hasAttribute("data-returning");
@@ -320,6 +382,56 @@ async function run() {
   scene.emit("gamereset"); await frame();
   out.cardHpAfterReset = hpText();
   out.noCardsAfterReset = hud.querySelectorAll(".hud-field-card").length === 0;
+
+  // Partida completa contra a CPU, até alguém perder todos os PokeProfs.
+  for (let i = 0; i < 5; i++) await frame();
+  cpuEl.setAttribute("cpu-player", { enabled: true, thinkMs: 150, sendDelayMs: 150 });
+  await frame();
+  out.cpuStartsWaiting = cpuEl.dataset.cpuState;
+  out.cpuBallsLocked = p2Rack.balls.every((b) => b.hasAttribute("data-no-grab"));
+  // Time da CPU fraco para a partida ser curta no teste.
+  p2Rack.balls.forEach((b) => b.components.pokeprof.damage(b.components.pokeprof.prof.hp - 12));
+  let gameOver = null;
+  scene.addEventListener("gameover", (e) => { gameOver = e.detail; });
+  await drop(p1Rack.balls[0], 0, 4);
+  let cpuPeak = 0;
+  await until(() => {
+    p2Rack.balls.forEach((b) => { cpuPeak = Math.max(cpuPeak, b.object3D.position.y); });
+    return !!battle.activeBall("p2");
+  }, 400);
+  out.cpuThrowPeakY = +cpuPeak.toFixed(2);
+  out.cpuReleased = pokemonsOf("p2");
+  out.cpuBallLandedOnField = +(battle.activeBall("p2")?.object3D.position.z ?? 0).toFixed(1);
+  const cpuStates = new Set();
+  let turns = 0;
+  for (let i = 0; i < 6000 && !gameOver; i++) {
+    cpuStates.add(cpuEl.dataset.cpuState);
+    if (battle.canChoose("p1") && hud.dataset.page === "main") {
+      await press("attack");
+      await press("reprovacao");
+      turns++;
+    } else if (!battle.activeBall("p1") && !battle.isGameOver()) {
+      const next = p1Rack.balls.find((b) => !b.components.pokeprof.prof.isFainted() && !b.hasAttribute("data-returning"));
+      if (next) await drop(next, 0, 4);
+    }
+    await frame();
+  }
+  out.matchTurns = turns;
+  out.cpuStatesSeen = [...cpuStates];
+  out.matchWinner = gameOver?.winner ?? null;
+  out.cpuDone = cpuEl.dataset.cpuState;
+  out.hudGameOverPage = hud.dataset.page;
+  out.hudResult = hud.querySelector(".hud-result")?.getAttribute("value");
+  out.gameOverButtons = hudButtons().map((b) => b.dataset.option);
+  await press("playagain");
+  for (let i = 0; i < 3; i++) await frame();
+  out.afterPlayAgain = {
+    page: hud.dataset.page,
+    cpu: cpuEl.dataset.cpuState,
+    gameOver: battle.isGameOver(),
+    allHealed: [...p1Rack.balls, ...p2Rack.balls].every((b) => b.components.pokeprof.prof.hp === b.components.pokeprof.prof.maxHp()),
+    onField: document.querySelectorAll(".released-pokemon").length,
+  };
   out.errors = errors;
   report(out);
 }

@@ -1,31 +1,33 @@
 // Regras de combate entre PokeProfs (sem A-Frame).
-import { Pokeprof } from "./pokeprof.js";
 
 /**
- * Multiplicador de vantagem: `beats[a] === b` → a vence b.
- * @param {string} attacker
- * @param {string} defender
- * @param {Record<string,string>} beats
+ * Multiplicador de vantagem por tipo: `typeBeats[a] === b` → tipo a vence
+ * tipo b. Mesmo tipo ou sem tipo: 1.
+ * @param {string | null} attackerType
+ * @param {string | null} defenderType
+ * @param {Record<string,string>} typeBeats
  * @param {{strong:number, weak:number}} rules
  */
-export function advantageMultiplier(attacker, defender, beats, rules) {
-  if (beats[attacker] === defender) return rules.strong;
-  if (beats[defender] === attacker) return rules.weak;
+export function advantageMultiplier(attackerType, defenderType, typeBeats, rules) {
+  if (!attackerType || !defenderType) return 1;
+  if (typeBeats[attackerType] === defenderType) return rules.strong;
+  if (typeBeats[defenderType] === attackerType) return rules.weak;
   return 1;
 }
 
 /**
  * Dano de um ataque de `attacker` em `defender` (ver config/battle.js).
- * @param {{name:string, stats:{attack:number}}} attacker
- * @param {{name:string, stats:{defense:number}}} defender
+ * Os atributos devem ser os que valem no momento (com power-up).
+ * @param {{type?:string|null, stats:{attack:number}}} attacker
+ * @param {{type?:string|null, stats:{defense:number}}} defender
  * @param {number} power poder do ataque
- * @param {Record<string,string>} beats
+ * @param {Record<string,string>} typeBeats
  * @param {{attackScale:number, defenseScale:number, strong:number, weak:number, minDamage:number}} rules
  */
-export function calculateDamage(attacker, defender, power, beats, rules) {
+export function calculateDamage(attacker, defender, power, typeBeats, rules) {
   const raw = power * (attacker.stats.attack / rules.attackScale);
   const reduced = raw * (rules.defenseScale / (rules.defenseScale + Math.max(0, defender.stats.defense)));
-  const damage = reduced * advantageMultiplier(attacker.name, defender.name, beats, rules);
+  const damage = reduced * advantageMultiplier(attacker.type, defender.type, typeBeats, rules);
   return Math.max(rules.minDamage, Math.round(damage));
 }
 
@@ -47,16 +49,17 @@ export function turnOrder(a, b, random = Math.random) {
 /**
  * Duelo 1x1 até alguém desmaiar, sempre com o mesmo poder de ataque.
  * Usado no teste de balanceamento. Retorna o nome do vencedor.
+ * @param {{name:string, type:string|null, stats:object}} fighterA
+ * @param {{name:string, type:string|null, stats:object}} fighterB
  */
-export function simulateDuel(nameA, statsA, nameB, statsB, power, beats, rules, maxTurns = 1000) {
-  const a = new Pokeprof(nameA, statsA);
-  const b = new Pokeprof(nameB, statsB);
+export function simulateDuel(fighterA, fighterB, power, typeBeats, rules, maxTurns = 1000) {
+  const hp = new Map([[fighterA, fighterA.stats.hp], [fighterB, fighterB.stats.hp]]);
   // Empate de velocidade no teste: `a` começa (determinístico).
-  const [first, second] = turnOrder(a, b, () => 0);
+  const [first, second] = turnOrder(fighterA, fighterB, () => 0);
   for (let turn = 0; turn < maxTurns; turn++) {
     for (const [attacker, defender] of [[first, second], [second, first]]) {
-      defender.takeDamage(calculateDamage(attacker, defender, power, beats, rules));
-      if (defender.isFainted()) {
+      hp.set(defender, hp.get(defender) - calculateDamage(attacker, defender, power, typeBeats, rules));
+      if (hp.get(defender) <= 0) {
         return attacker.name;
       }
     }

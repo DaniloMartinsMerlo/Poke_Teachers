@@ -44,6 +44,9 @@ AFRAME.registerComponent("physics-body", {
     this.landed = false;
     // Material da última superfície em que pousou (null = no ar/na mão).
     this.landedOn = null;
+    // Bola segurada empurrada para fora de uma parede neste quadro:
+    // { desired, applied } (posições locais). Ver keepOutOfWalls.
+    this.holdClamp = null;
     this.onCollide = (event) => this.handleCollision(event);
 
     this.startPosition = this.el.object3D.position.clone();
@@ -113,6 +116,27 @@ AFRAME.registerComponent("physics-body", {
       return;
     }
     this.body.velocity.vadd(new CANNON.Vec3(vector.x, vector.y, vector.z), this.body.velocity);
+    this.body.wakeUp();
+  },
+
+  /**
+   * Arremesso sem mão (CPU): sai de `position` (mundo) com `velocity`.
+   */
+  launch(position, velocity) {
+    if (isHeld(this.el)) {
+      return;
+    }
+    this.scripted = false;
+    this.snapped = false;
+    this.wasHeld = false;
+    this.pendingImpulse.set(0, 0, 0);
+    this.el.object3D.position.set(position.x, position.y, position.z);
+    this.body.type = CANNON.Body.DYNAMIC;
+    this.body.collisionResponse = true;
+    this.syncBodyToEntity();
+    this.takeOff();
+    this.body.velocity.set(velocity.x, velocity.y, velocity.z);
+    this.body.angularVelocity.set(0, 0, 0);
     this.body.wakeUp();
   },
 
@@ -214,6 +238,7 @@ AFRAME.registerComponent("physics-body", {
       this.followHand(dt);
       return;
     }
+    this.holdClamp = null;
     if (this.wasHeld) {
       this.throwFromHand();
     }
@@ -225,8 +250,17 @@ AFRAME.registerComponent("physics-body", {
   // Segurado: o corpo vira cinemático, segue a mão e mede a velocidade
   // dela para o arremesso.
   followHand(dt) {
-    this.el.object3D.getWorldPosition(this.worldPosition);
+    const object = this.el.object3D;
+    // Quadro anterior empurrou a bola para fora de uma parede e ninguém a
+    // moveu desde então: volta à posição pedida pela mão (assim a "pegada"
+    // do controle/mouse não muda) e testa de novo.
+    if (this.holdClamp && object.position.equals(this.holdClamp.applied)) {
+      object.position.copy(this.holdClamp.desired);
+    }
+    this.holdClamp = null;
+    object.getWorldPosition(this.worldPosition);
     if (this.wasHeld) {
+      this.keepOutOfWalls(this.lastPosition);
       const instant = this.worldPosition.clone().sub(this.lastPosition).divideScalar(dt);
       this.heldVelocity.lerp(instant, 0.5);
     } else {
@@ -240,6 +274,23 @@ AFRAME.registerComponent("physics-body", {
     this.syncBodyToEntity();
     this.stop();
     this.wasHeld = true;
+  },
+
+  // A mão pode atravessar parede, chão e móveis; a bola não. Ela vai até
+  // onde dá, deslizando rente à superfície, a partir da última posição
+  // válida (`from`). Roda no sistema de física, depois dos "tick" dos
+  // pegadores, então o quadro desenhado já mostra a posição corrigida.
+  keepOutOfWalls(from) {
+    const object = this.el.object3D;
+    const safe = this.system.constrainHeldMove(from, this.worldPosition, this.data.radius);
+    if (this.worldPosition.distanceToSquared(safe) < 1e-12) {
+      return;
+    }
+    const desired = object.position.clone();
+    // A bola pode ser filha do controle/câmera: converte para o espaço do pai.
+    object.position.copy(object.parent.worldToLocal(new THREE.Vector3(safe.x, safe.y, safe.z)));
+    this.holdClamp = { desired, applied: object.position.clone() };
+    this.worldPosition.set(safe.x, safe.y, safe.z);
   },
 
   // Acabou de soltar: volta a ser dinâmico com a velocidade da mão.

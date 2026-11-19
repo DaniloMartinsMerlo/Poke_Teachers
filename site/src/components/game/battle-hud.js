@@ -1,6 +1,7 @@
 import { EVENTS, HUD_BUTTON_CLASS } from "../../config/constants.js";
 import { ATTACKS, POWERUPS } from "../../config/battle.js";
 import {
+  GAME_OVER_OPTIONS,
   HUD_ACTIONS,
   HUD_ANGLE_DEG,
   HUD_BUTTON,
@@ -16,7 +17,9 @@ import {
   HUD_RECENTER_DEG,
   HUD_RECENTER_DELAY_MS,
   HUD_RECENTER_RATE,
+  HUD_RESULT_COLORS,
   HUD_STATUS_MS,
+  HUD_TEXTS,
   MAIN_OPTIONS,
 } from "../../config/hud.js";
 import { playerInfo } from "../../config/players.js";
@@ -30,7 +33,12 @@ const PAGE_TITLES = Object.freeze({
   [HUD_PAGES.MAIN]: "Batalha",
   [HUD_PAGES.ATTACK]: "Ataque",
   [HUD_PAGES.POWERUP]: "PowerUps",
+  [HUD_PAGES.GAME_OVER]: "Fim de jogo",
 });
+
+// Botões que dependem do turno: travados depois de escolher, enquanto o
+// turno resolve e no fim de jogo.
+const TURN_ACTIONS = new Set([HUD_ACTIONS.ATTACK, HUD_ACTIONS.POWERUP]);
 
 const BACK_OPTION = Object.freeze({ action: HUD_ACTIONS.BACK, label: "Voltar" });
 
@@ -46,6 +54,12 @@ const BACK_OPTION = Object.freeze({ action: HUD_ACTIONS.BACK, label: "Voltar" })
 // PokeProf e Desistir. Ataque e PowerUps abrem páginas com 4 opções e
 // "Voltar". Cada escolha vira o evento HUD_ACTION na cena; "Trocar" também
 // pede RECALL_REQUESTED (o suporte traz a bola de volta).
+//
+// Turnos (sistema "battle"): escolhido o ataque/power-up, mostra
+// "Aguardando adversario..." e trava Ataque e PowerUps (cinza) até o turno
+// resolver; Trocar fica travado só enquanto o turno resolve. Cada ação do
+// turno aparece no status. No fim de jogo mostra "Voce venceu!/perdeu!" e
+// o botão "Jogar de novo" (reseta a partida).
 //
 // PokeProf do jogador em campo: o cartão dele (foto, vida, atributos) fica
 // logo acima do painel e acompanha a vida ao vivo; some ao recolher.
@@ -86,17 +100,26 @@ AFRAME.registerComponent("battle-hud", {
         ? `${name} esta desmaiado!`
         : "Apenas 1 PokeProf por vez!");
     };
-    // Ataque acertou: mostra o dano (e o desmaio) no status.
-    this.onDamaged = ({ detail }) => {
-      if (detail.attackerPlayer === this.data.player) {
-        this.setStatus(detail.fainted
-          ? `${detail.defender} desmaiou! -${detail.damage} HP`
-          : `${detail.attacker} usou ${detail.attackLabel}! -${detail.damage} HP`);
-      } else if (detail.defenderPlayer === this.data.player && detail.fainted) {
-        this.setStatus(`${detail.defender} desmaiou!`);
-      }
+    // Turno: cada ação aparece no status; travas seguem o estado do turno.
+    this.lockKey = "";
+    this.onTurnAction = ({ detail }) => this.setStatus(this.describeAction(detail));
+    this.onTurnStarted = () => this.setStatus(HUD_TEXTS.resolving, true);
+    this.onTurnChanged = () => this.refreshLocks();
+    this.onGameOver = ({ detail }) => this.showGameOver(detail.winner === this.data.player);
+    this.onGameReset = () => {
+      this.setStatus("");
+      this.lockKey = this.computeLockKey();
+      this.showPage(HUD_PAGES.MAIN);
     };
-    this.el.sceneEl.addEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
+    const sceneEvents = [
+      [EVENTS.TURN_ACTION, this.onTurnAction],
+      [EVENTS.TURN_STARTED, this.onTurnStarted],
+      [EVENTS.TURN_CHANGED, this.onTurnChanged],
+      [EVENTS.GAME_OVER, this.onGameOver],
+      [EVENTS.GAME_RESET, this.onGameReset],
+    ];
+    this.sceneEvents = sceneEvents;
+    sceneEvents.forEach(([name, handler]) => this.el.sceneEl.addEventListener(name, handler));
     this.onSentOut = ({ detail }) => this.showFieldCard(detail.player, detail.ball);
     this.onRecalled = ({ detail }) => {
       if (this.fieldCards.get(detail.player)?.ball === detail.ball) {
@@ -213,6 +236,7 @@ AFRAME.registerComponent("battle-hud", {
   optionsOf(page) {
     if (page === HUD_PAGES.ATTACK) return [...ATTACKS, BACK_OPTION];
     if (page === HUD_PAGES.POWERUP) return [...POWERUPS, BACK_OPTION];
+    if (page === HUD_PAGES.GAME_OVER) return GAME_OVER_OPTIONS;
     return MAIN_OPTIONS;
   },
 
@@ -225,26 +249,61 @@ AFRAME.registerComponent("battle-hud", {
       this.list.removeChild(this.list.firstChild);
     }
     const options = this.optionsOf(page);
-    this.layout(options.length > 4 ? 3 : 2);
-    this.buttons = options.map((option, index) => this.buildButton(option, index));
+    if (page === HUD_PAGES.GAME_OVER) {
+      this.layout(2);
+      this.list.appendChild(this.buildResultText());
+    } else {
+      this.layout(options.length > 4 ? 3 : 2);
+    }
+    this.buttons = options.map((option, index) => this.buildButton(option, this.slotOf(page, index)));
+  },
+
+  // Fim de jogo: resultado grande na 1ª linha, "Jogar de novo" na 2ª.
+  showGameOver(won) {
+    this.won = won;
+    this.setStatus("");
+    this.showPage(HUD_PAGES.GAME_OVER);
+  },
+
+  buildResultText() {
+    return createEntity("a-text", {
+      class: "hud-result",
+      value: this.won ? HUD_TEXTS.win : HUD_TEXTS.lose,
+      color: this.won ? HUD_RESULT_COLORS.win : HUD_RESULT_COLORS.lose,
+      align: "center", "wrap-count": 14, width: this.gridWidth,
+      position: vec3(0, 0, 0.002),
+    });
+  },
+
+  // Posição e largura do botão `index` na página. Grade 2x2: índices 0–3
+  // nas duas primeiras linhas; o 5º ("Voltar") ocupa a linha de baixo
+  // inteira. No fim de jogo, o único botão ocupa a 2ª linha inteira.
+  slotOf(page, index) {
+    const { width, height, gap } = HUD_BUTTON;
+    const full = 2 * width + gap;
+    if (page === HUD_PAGES.GAME_OVER) {
+      return { x: 0, y: -(height + gap), width: full };
+    }
+    if (index < 4) {
+      return { x: ((index % 2) - 0.5) * (width + gap), y: -Math.floor(index / 2) * (height + gap), width };
+    }
+    return { x: 0, y: -2 * (height + gap), width: full };
   },
 
   // Botão = plano (alvo dos raios) + texto irmão na frente. O texto não é
-  // filho do plano para o raio sempre acusar o próprio botão.
-  // Grade 2x2: índices 0–3 nas duas primeiras linhas; o 5º botão
-  // ("Voltar") ocupa a linha de baixo inteira.
-  buildButton(option, index) {
-    const { height, gap } = HUD_BUTTON;
-    const inGrid = index < 4;
-    const width = inGrid ? HUD_BUTTON.width : 2 * HUD_BUTTON.width + gap;
-    const x = inGrid ? ((index % 2) - 0.5) * (HUD_BUTTON.width + gap) : 0;
-    const y = -(inGrid ? Math.floor(index / 2) : 2) * (height + gap);
+  // filho do plano para o raio sempre acusar o próprio botão. Botão
+  // travado fica cinza e não responde.
+  buildButton(option, { x, y, width }) {
+    const { height } = HUD_BUTTON;
+    const locked = this.isLocked(option);
+    const idleColor = locked ? HUD_COLORS.disabled : HUD_COLORS.button;
     const plane = createEntity("a-plane", {
       class: HUD_BUTTON_CLASS,
       "data-option": option.action || option.id,
+      "data-locked": String(locked),
       position: vec3(x, y, 0),
       width, height,
-      material: `color: ${HUD_COLORS.button}; shader: flat`,
+      material: `color: ${idleColor}; shader: flat`,
     });
     const label = createEntity("a-text", {
       value: option.label, align: "center", color: HUD_COLORS.text,
@@ -252,8 +311,9 @@ AFRAME.registerComponent("battle-hud", {
       position: vec3(x, y, 0.002),
     });
     const highlight = (on) => {
-      plane.setAttribute("material", "color", on ? HUD_COLORS.buttonHover : HUD_COLORS.button);
-      label.setAttribute("color", on ? HUD_COLORS.textHover : HUD_COLORS.text);
+      const active = on && !this.isLocked(option);
+      plane.setAttribute("material", "color", active ? HUD_COLORS.buttonHover : idleColor);
+      label.setAttribute("color", active ? HUD_COLORS.textHover : HUD_COLORS.text);
     };
     plane.addEventListener("mouseenter", () => highlight(true));
     plane.addEventListener("mouseleave", () => highlight(false));
@@ -263,7 +323,62 @@ AFRAME.registerComponent("battle-hud", {
     return { plane, option, width };
   },
 
+  // Botão travado pelo turno? Ataques e power-ups (e os botões que abrem
+  // as páginas deles) depois de escolher, durante a resolução e no fim de
+  // jogo; Trocar só durante a resolução e no fim de jogo.
+  isLocked(option) {
+    const battle = this.el.sceneEl.systems.battle;
+    if (!battle) {
+      return false;
+    }
+    const busy = battle.isResolving() || battle.isGameOver();
+    const onTurnPage = this.page === HUD_PAGES.ATTACK || this.page === HUD_PAGES.POWERUP;
+    if (TURN_ACTIONS.has(option.action) || (onTurnPage && option.id)) {
+      return busy || battle.hasChosen(this.data.player);
+    }
+    return option.action === HUD_ACTIONS.SWITCH && busy;
+  },
+
+  computeLockKey() {
+    return MAIN_OPTIONS.map((option) => (this.isLocked(option) ? 1 : 0)).join("");
+  },
+
+  // Estado do turno mudou: redesenha os botões se alguma trava mudou.
+  // Travado numa página de ataque/power-up: volta ao menu principal.
+  refreshLocks() {
+    if (this.page === HUD_PAGES.GAME_OVER) {
+      return;
+    }
+    const key = this.computeLockKey();
+    if (key === this.lockKey) {
+      return;
+    }
+    this.lockKey = key;
+    const onTurnPage = this.page === HUD_PAGES.ATTACK || this.page === HUD_PAGES.POWERUP;
+    this.showPage(onTurnPage && this.isLocked({ action: HUD_ACTIONS.ATTACK }) ? HUD_PAGES.MAIN : this.page);
+  },
+
+  // Texto do status para uma ação do turno (TURN_ACTION).
+  describeAction(detail) {
+    const mine = detail.player === this.data.player;
+    const actor = mine ? detail.actorName : `${detail.actorName} (${playerInfo(detail.player).label})`;
+    if (detail.kind === HUD_ACTIONS.ATTACK) {
+      if (detail.fainted) {
+        return `${detail.targetName} desmaiou! -${detail.damage} HP`;
+      }
+      return `${actor} usou ${detail.label}! -${detail.damage} HP`;
+    }
+    const { powerup } = detail;
+    if (powerup.effect === "heal") {
+      return `${actor} usou ${detail.label}! +${detail.healed} HP`;
+    }
+    return `${actor} usou ${detail.label}: ${powerup.short} +${powerup.percent}%`;
+  },
+
   choose(option) {
+    if (this.isLocked(option)) {
+      return;
+    }
     const { page, emit } = chooseHudOption(this.page, option);
     if (emit) {
       this.announce(emit, option);
@@ -282,6 +397,7 @@ AFRAME.registerComponent("battle-hud", {
     // batalha emite POKEMON_DAMAGED e o status é trocado pelo dano.
     this.defaultStatus(emit, option, activeBall, activeName);
     sceneEl.emit(EVENTS.HUD_ACTION, { player, ...emit }, false);
+    this.refreshLocks();
     if (emit.action === HUD_ACTIONS.SWITCH && activeBall) {
       sceneEl.emit(EVENTS.RECALL_REQUESTED, { player }, false);
     }
@@ -297,26 +413,34 @@ AFRAME.registerComponent("battle-hud", {
         this.setStatus(`Volte, ${activeName}!`);
         return;
       case HUD_ACTIONS.ATTACK:
+      case HUD_ACTIONS.POWERUP: {
+        const battle = this.el.sceneEl.systems.battle;
+        const opponent = battle.opponentOf(this.data.player);
         if (!activeBall) {
           this.setStatus("Nenhum PokeProf em campo");
         } else if (activeBall.components.pokeprof?.prof.isFainted()) {
           this.setStatus(`${activeName} esta desmaiado`);
-        } else {
-          this.setStatus(`${activeName} usou ${option.label}! Sem alvo`);
+        } else if (!battle.activeBall(opponent) || battle.activeProf(opponent).prof.isFainted()) {
+          this.setStatus("Aguarde o adversario lancar um PokeProf");
+        } else if (battle.canChoose(this.data.player)) {
+          // Se o adversário já escolheu, o turno começa na hora e troca
+          // este texto por "Resolvendo".
+          this.setStatus(HUD_TEXTS.waiting, true);
         }
         return;
-      case HUD_ACTIONS.POWERUP:
-        this.setStatus(`${option.label} ativado!`);
-        return;
+      }
       default:
         // Desistir: por enquanto não faz nada.
     }
   },
 
-  setStatus(text) {
+  /** Mensagem no status; some depois de HUD_STATUS_MS, salvo `sticky`. */
+  setStatus(text, sticky = false) {
     this.status.setAttribute("value", text);
     clearTimeout(this.statusTimer);
-    this.statusTimer = setTimeout(() => this.status.setAttribute("value", ""), HUD_STATUS_MS);
+    if (!sticky && text) {
+      this.statusTimer = setTimeout(() => this.status.setAttribute("value", ""), HUD_STATUS_MS);
+    }
   },
 
   // Mão rastreada: pinça (posição no espaço do rig) encostada num botão.
@@ -328,7 +452,10 @@ AFRAME.registerComponent("battle-hud", {
     hand.object3D.updateMatrixWorld();
     const point = new THREE.Vector3().copy(event.detail.position).applyMatrix4(hand.object3D.matrixWorld);
     const { height } = HUD_BUTTON;
-    const hit = this.buttons.find(({ plane, width }) => {
+    const hit = this.buttons.find(({ plane, width, option }) => {
+      if (this.isLocked(option)) {
+        return false;
+      }
       plane.object3D.updateMatrixWorld();
       plane.object3D.worldToLocal(this.local.copy(point));
       return Math.abs(this.local.x) <= width / 2 + HUD_PINCH_REACH / 2
@@ -397,7 +524,7 @@ AFRAME.registerComponent("battle-hud", {
   remove() {
     clearTimeout(this.statusTimer);
     this.el.sceneEl.removeEventListener(EVENTS.SEND_OUT_BLOCKED, this.onBlocked);
-    this.el.sceneEl.removeEventListener(EVENTS.POKEMON_DAMAGED, this.onDamaged);
+    this.sceneEvents.forEach(([name, handler]) => this.el.sceneEl.removeEventListener(name, handler));
     this.el.sceneEl.removeEventListener(EVENTS.POKEMON_RELEASED, this.onSentOut);
     this.el.sceneEl.removeEventListener(EVENTS.POKEMON_RECALLED, this.onRecalled);
     [...this.fieldCards.keys()].forEach((player) => this.hideFieldCard(player));

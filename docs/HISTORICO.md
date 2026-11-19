@@ -308,3 +308,72 @@ professores.
 - Espera antes de recolher para o jogador ver o golpe final na barra.
 - O atraso é contado nos `tick`s do suporte, não com `setTimeout`: pausa
   junto com a cena e funciona no e2e com quadros simulados.
+
+## 2026-11-19 — turnos, CPU, power-ups, tipos, fim de jogo, bola segurada
+
+### Mudanças
+- **Tipos** (`config/teachers.js`): Rodinha **Fogo**, Fabi **Grama**,
+  Murilo **Agua**; `TYPE_BEATS` Fogo > Grama > Agua > Fogo substitui o
+  `BEATS` entre professores. `advantageMultiplier`/`calculateDamage`
+  comparam tipos. O cartão mostra "Tipo Fogo > Grama" na cor do tipo.
+- **Turnos** (`domain/turn.js`, sistema `battle`): cada jogador escolhe
+  um ataque ou power-up; nada é aplicado até os dois escolherem. Depois o
+  turno resolve aos poucos (0,5 s, e 1,1 s entre as ações): o mais rápido
+  (com power-up ativo) age primeiro; se derrubar o outro, o segundo não
+  age. Cada ação vira `turnaction`; o HUD mostra "Aguardando
+  adversario...", "Resolvendo o turno..." e o resultado de cada ação.
+  Ataque e PowerUps ficam cinza (travados) depois de escolher; Trocar só
+  trava durante a resolução. Trocar/recolher apaga a escolha do jogador
+  e tira os power-ups do PokeProf. O ataque instantâneo provisório e o
+  evento `pokemondamaged` saíram.
+- **Power-ups** (`POWERUPS` em `config/battle.js`): Ponto Extra ATQ +50%,
+  Cola Liberada VEL +80%, Feriado DEF +100% (valem no turno seguinte ao
+  uso, por 1 turno), Intervalo cura 35% da vida máxima na hora. O cartão
+  em campo mostra o power-up ("Feriado: DEF +100% (este turno)" ou
+  "(prox. turno)") e os atributos já com o bônus.
+- **CPU** (`domain/cpu.js` + componente `cpu-player` no suporte do J2,
+  `control: "cpu"`): aguardando → escolher PokeProf → arremessar →
+  escolher ação → aguardar turno, voltando a escolher PokeProf quando o
+  dela desmaia; para no fim de jogo, reset recomeça. A bola sobe 35 cm
+  do suporte e é lançada em arco balístico (1,1 s) até |z| = 3,5 do lado
+  dela, x sorteado; solta o PokeProf pelo fluxo normal de pouso. Se não
+  soltar em 3,5 s, a bola volta e ela tenta de novo. Pessoas não pegam as
+  bolas da CPU (`data-no-grab`).
+- **Fim de jogo:** todos os PokeProfs de um jogador desmaiados → depois
+  de `GAME_OVER_DELAY` (1,7 s) evento `gameover`; o HUD vira a página
+  "Fim de jogo" com "Voce venceu!/perdeu!" e "Jogar de novo" (emite
+  `gamereset`: bolas voltam, todos curados, CPU aguardando).
+- **Bola segurada não atravessa parede, chão nem móveis:** no sistema de
+  física (que roda depois dos `tick` dos pegadores), um raio do cannon.js
+  da última posição válida até a posição pedida pela mão testa corpos
+  estáticos; batendo, a bola fica rente à superfície e desliza
+  (`domain/held.js`). Nunca fica abaixo do chão.
+
+### Decisões e motivos
+- **CPU com 25% de chance de power-up** e nunca repetindo o último
+  power-up que usou (pedido do usuário: evitar dois seguidos). Também não
+  escolhe Intervalo com a vida cheia.
+- **Cura vale na hora** (na vez dele na ordem do turno); só os de
+  atributo esperam o turno seguinte — curar "no turno seguinte" pareceria
+  que o botão não funcionou.
+- **Jogador pode repetir power-up** em turnos seguidos (a regra de não
+  repetir é só da CPU, como pedido). O efeito não acumula: o novo
+  substitui o pendente.
+- **Nomes → efeitos:** Ponto Extra = ataque, Cola Liberada = velocidade
+  ("responde mais rápido"), Feriado = defesa (descanso), Intervalo = cura.
+- **Trocar continua livre** (não gasta o turno), como já era; ficou como
+  pendência decidir.
+- **Bola segurada corrigida só no desenho do quadro:** a posição pedida
+  pela mão é guardada e restaurada no quadro seguinte, senão a "pegada"
+  do controle/mouse (posição local) mudaria para sempre depois de
+  encostar numa parede. Ao soltar, a bola sai da posição corrigida.
+- A CPU chama `systems.battle.choose()` direto (API do sistema, como o
+  `ball-rack` já faz com `activeBall`), em vez de fingir um clique no HUD.
+- Esperas do turno e da CPU contadas nos `tick`s (pausam com a cena e
+  funcionam no e2e com quadros simulados).
+
+### Pendências
+- Dois jogadores humanos na mesma partida (rede) — anotado no A_FAZER.
+- Trocar gasta o turno? Desistir.
+- Validar no Quest: ritmo do turno, legibilidade das mensagens e do
+  cartão com power-up, bola encostando nas paredes.

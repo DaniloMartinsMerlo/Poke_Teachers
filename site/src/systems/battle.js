@@ -1,40 +1,78 @@
-import { ATTACKS, DAMAGE_RULES } from "../config/battle.js";
-import { EVENTS } from "../config/constants.js";
+import {
+  ATTACKS, DAMAGE_RULES, GAME_OVER_DELAY, POWERUPS, TURN_START_DELAY, TURN_STEP_DELAY,
+} from "../config/battle.js";
+import { EVENTS, MAX_FRAME_MS } from "../config/constants.js";
 import { HUD_ACTIONS } from "../config/hud.js";
 import { PLAYER_IDS } from "../config/players.js";
-import { BEATS } from "../config/teachers.js";
+import { TYPE_BEATS } from "../config/teachers.js";
 import { canSendOut } from "../domain/battle.js";
-import { calculateDamage } from "../domain/combat.js";
+import {
+  ACTION_KINDS, TurnChoices, finishTurn, isTeamDefeated, performAction, planTurn,
+} from "../domain/turn.js";
+
+const TURN_RULES = Object.freeze({
+  attacks: ATTACKS, powerups: POWERUPS, typeBeats: TYPE_BEATS, rules: DAMAGE_RULES,
+});
 
 // ----------------------------------------------------------------------
-// Sistema "battle": sabe qual pokébola de cada jogador está com o pokémon
-// em campo. Regra: um pokémon por jogador de cada vez.
-// Atualizado pelos eventos POKEMON_RELEASED / POKEMON_RECALLED que o
-// "pokemon-release" emite na cena.
+// Sistema "battle": quem está em campo, turnos e fim de jogo.
 //
-// Ataque escolhido no HUD (provisório, sem turnos ainda): se os dois
-// jogadores têm PokeProf em campo e o atacante não desmaiou, o dano
-// (domain/combat.js) vai direto no PokeProf do adversário.
+// Em campo: qual pokébola de cada jogador está com o PokeProf fora (um
+// por jogador), pelos eventos POKEMON_RELEASED / POKEMON_RECALLED.
+//
+// Turnos (regras em domain/turn.js): com os dois PokeProfs em campo e de
+// pé, cada jogador escolhe uma ação — HUD_ACTION (pessoa) ou `choose()`
+// (CPU). Com as duas escolhas o turno resolve aos poucos (TURN_START_DELAY
+// e TURN_STEP_DELAY entre as ações, contados nos ticks): o mais rápido age
+// primeiro; cada ação vira TURN_ACTION. Trocar/recolher o PokeProf apaga a
+// escolha daquele jogador.
+//
+// Fim de jogo: quando todos os PokeProfs de um jogador desmaiam, depois
+// de GAME_OVER_DELAY emite GAME_OVER. "Jogar de novo" no HUD reseta tudo
+// (GAME_RESET, o mesmo da tecla R / botões B/Y).
 // ----------------------------------------------------------------------
 AFRAME.registerSystem("battle", {
   init() {
     this.active = {};
+    this.choices = new TurnChoices();
+    // Turno resolvendo: { sides, steps: [[actor, target]...], wait }.
+    this.resolving = null;
+    // Fim de jogo: { winner, loser, wait } (wait > 0: ainda não anunciado).
+    this.result = null;
+
     this.onReleased = ({ detail }) => {
       this.active[detail.player] = detail.ball;
+      this.choices.clear(detail.player);
+      this.changed();
     };
     this.onRecalled = ({ detail }) => {
       if (this.active[detail.player] === detail.ball) {
         delete this.active[detail.player];
+        detail.ball.components.pokeprof?.prof.clearBoosts();
+        this.choices.clear(detail.player);
+        this.changed();
       }
+    };
+    this.onHudAction = ({ detail }) => {
+      if (detail.action === HUD_ACTIONS.ATTACK || detail.action === HUD_ACTIONS.POWERUP) {
+        this.choose(detail.player, { kind: detail.action, id: detail.id });
+      } else if (detail.action === HUD_ACTIONS.PLAY_AGAIN) {
+        this.el.emit(EVENTS.GAME_RESET, null, false);
+      }
+    };
+    this.onFainted = (event) => this.checkGameOver(event.target.dataset.player);
+    this.onGameReset = () => {
+      this.active = {};
+      this.choices.clear();
+      this.resolving = null;
+      this.result = null;
+      this.changed();
     };
     this.el.addEventListener(EVENTS.POKEMON_RELEASED, this.onReleased);
     this.el.addEventListener(EVENTS.POKEMON_RECALLED, this.onRecalled);
-    this.onHudAction = ({ detail }) => {
-      if (detail.action === HUD_ACTIONS.ATTACK) {
-        this.attack(detail.player, detail.id);
-      }
-    };
     this.el.addEventListener(EVENTS.HUD_ACTION, this.onHudAction);
+    this.el.addEventListener(EVENTS.POKEPROF_FAINTED, this.onFainted);
+    this.el.addEventListener(EVENTS.GAME_RESET, this.onGameReset);
   },
 
   opponentOf(player) {
@@ -46,26 +84,6 @@ AFRAME.registerSystem("battle", {
     return this.activeBall(player)?.components.pokeprof || null;
   },
 
-  attack(player, attackId) {
-    const move = ATTACKS.find((item) => item.id === attackId);
-    const attacker = this.activeProf(player);
-    const defender = this.activeProf(this.opponentOf(player));
-    if (!move || !attacker || !defender || attacker.prof.isFainted() || defender.prof.isFainted()) {
-      return;
-    }
-    const damage = defender.damage(calculateDamage(attacker.prof, defender.prof, move.power, BEATS, DAMAGE_RULES));
-    this.el.emit(EVENTS.POKEMON_DAMAGED, {
-      attackerPlayer: player,
-      defenderPlayer: this.opponentOf(player),
-      attacker: attacker.prof.name,
-      defender: defender.prof.name,
-      attackLabel: move.label,
-      damage,
-      hp: defender.prof.hp,
-      fainted: defender.prof.isFainted(),
-    }, false);
-  },
-
   canSendOut(player, ball) {
     return canSendOut(this.active, player, ball);
   },
@@ -75,9 +93,141 @@ AFRAME.registerSystem("battle", {
     return this.active[player] || null;
   },
 
+  /** Pokébolas (com PokeProf) de um jogador. */
+  ballsOf(player) {
+    return [...this.el.querySelectorAll(`[pokeprof][data-player="${player}"]`)];
+  },
+
+  isResolving() {
+    return Boolean(this.resolving);
+  },
+
+  isGameOver() {
+    return Boolean(this.result);
+  },
+
+  /** Vencedor/perdedor, depois de anunciado (ou null). */
+  gameResult() {
+    return this.result && this.result.wait <= 0 ? { winner: this.result.winner, loser: this.result.loser } : null;
+  },
+
+  hasChosen(player) {
+    return this.choices.has(player);
+  },
+
+  /** Os dois jogadores têm PokeProf em campo e de pé? */
+  bothOnField() {
+    return PLAYER_IDS.every((player) => {
+      const prof = this.activeProf(player)?.prof;
+      return prof && !prof.isFainted();
+    });
+  },
+
+  /** O turno aceita a escolha deste jogador agora? */
+  canChoose(player) {
+    return !this.result && !this.resolving && !this.choices.has(player) && this.bothOnField();
+  },
+
+  /**
+   * Escolha de ação do turno. Retorna se foi aceita.
+   * @param {string} player
+   * @param {{kind: string, id: string}} choice ACTION_KINDS + id do ataque/power-up
+   */
+  choose(player, choice) {
+    const list = choice.kind === ACTION_KINDS.ATTACK ? ATTACKS : POWERUPS;
+    if (!this.canChoose(player) || !list.some((item) => item.id === choice.id)) {
+      return false;
+    }
+    this.choices.choose(player, choice);
+    this.changed(player);
+    if (this.choices.isReady(PLAYER_IDS)) {
+      this.startTurn();
+    }
+    return true;
+  },
+
+  startTurn() {
+    const sides = PLAYER_IDS.map((player) => ({
+      player,
+      ball: this.activeBall(player),
+      prof: this.activeProf(player).prof,
+      choice: this.choices.get(player),
+    }));
+    this.resolving = { sides, steps: planTurn(sides), wait: TURN_START_DELAY };
+    this.choices.clear();
+    this.el.emit(EVENTS.TURN_STARTED, { order: this.resolving.steps.map(([actor]) => actor.player) }, false);
+    this.changed();
+  },
+
+  // Uma ação do turno. Quem saiu de campo no meio (bola pega) não age nem
+  // é alvo.
+  performStep([actor, target]) {
+    if (this.activeBall(actor.player) !== actor.ball || this.activeBall(target.player) !== target.ball) {
+      return false;
+    }
+    const before = new Map([actor, target].map((side) => [side, side.prof.hp]));
+    const result = performAction(actor, target, TURN_RULES);
+    if (!result) {
+      return false;
+    }
+    [actor, target].forEach((side) => side.ball.components.pokeprof?.notify(before.get(side)));
+    this.el.emit(EVENTS.TURN_ACTION, {
+      ...result, actorName: actor.prof.name, targetName: target.prof.name,
+    }, false);
+    return true;
+  },
+
+  finishTurn() {
+    const { sides } = this.resolving;
+    finishTurn(sides);
+    sides.forEach((side) => side.ball.components.pokeprof?.changed());
+    this.resolving = null;
+    this.el.emit(EVENTS.TURN_RESOLVED, null, false);
+    this.changed();
+  },
+
+  checkGameOver(loser) {
+    if (this.result || !loser) {
+      return;
+    }
+    const profs = this.ballsOf(loser).map((ball) => ball.components.pokeprof.prof);
+    if (isTeamDefeated(profs)) {
+      this.result = { winner: this.opponentOf(loser), loser, wait: GAME_OVER_DELAY };
+      this.changed();
+    }
+  },
+
+  changed(player = null) {
+    this.el.emit(EVENTS.TURN_CHANGED, { player }, false);
+  },
+
+  tick(time, delta) {
+    const dt = Math.min(delta || 0, MAX_FRAME_MS);
+    if (this.resolving) {
+      this.resolving.wait -= dt;
+      while (this.resolving && this.resolving.wait <= 0) {
+        const step = this.resolving.steps.shift();
+        if (!step) {
+          this.finishTurn();
+        } else if (this.performStep(step)) {
+          this.resolving.wait = TURN_STEP_DELAY;
+        }
+      }
+    }
+    if (this.result && this.result.wait > 0) {
+      this.result.wait -= dt;
+      if (this.result.wait <= 0) {
+        this.el.emit(EVENTS.GAME_OVER, { winner: this.result.winner, loser: this.result.loser }, false);
+        this.changed();
+      }
+    }
+  },
+
   remove() {
     this.el.removeEventListener(EVENTS.POKEMON_RELEASED, this.onReleased);
     this.el.removeEventListener(EVENTS.POKEMON_RECALLED, this.onRecalled);
     this.el.removeEventListener(EVENTS.HUD_ACTION, this.onHudAction);
+    this.el.removeEventListener(EVENTS.POKEPROF_FAINTED, this.onFainted);
+    this.el.removeEventListener(EVENTS.GAME_RESET, this.onGameReset);
   },
 });

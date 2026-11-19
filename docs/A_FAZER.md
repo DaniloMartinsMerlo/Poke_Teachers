@@ -104,6 +104,12 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
 - [ ] Só com as mãos não dá para andar nem resetar (sem analógico nem
   B/Y): pensar em um gesto.
 - [ ] Trocar os pokémons de primitivas por modelos `.glb` (Blender).
+- [ ] **Controles no computador (teclado/mouse): decidir entre remover ou
+  corrigir.** Hoje não funcionam direito no navegador e foram retirados da
+  tabela de controles do README. Componentes envolvidos: `cursor-grabber`,
+  `keyboard-reset`, `vertical-controls`, `wasd-controls`/`look-controls` e
+  o `<a-cursor id="mouse-cursor">` em `site/index.html`. Se corrigir, voltar
+  a coluna "Computador" na tabela do README.
 
 ## Validar no Quest 3
 

@@ -501,3 +501,13 @@ professores.
 
 ### Pendências
 - Etapas 2–6 dos 2 jogadores (A_FAZER). Validar o painel no Quest 3.
+
+### Ajuste no mesmo dia — menu abaixo do chão ao entrar no VR; aba "PokeProf"
+- No Quest, ao apertar VR o painel ia para baixo do chão: era
+  reposicionado logo no `enter-vr`, quando a câmera ainda está na altura 0
+  (o headset só manda a posição da cabeça nos quadros seguintes). Agora o
+  `main-menu` espera no `tick` a cabeça passar de 0,5 m (no mínimo 150 ms,
+  desiste em 2 s) antes de reposicionar, e o centro do painel nunca fica
+  abaixo de 0,9 m (`canPlacePanel`, `minHeight` em `config/menu.js`).
+- Título da aba do navegador: "PokeProf".
+

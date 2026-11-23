@@ -33,6 +33,20 @@ async function run() {
   out.menuHomeOptions = menuButtons().map((b) => b.dataset.option);
   out.menuInFrontOfPlayer = +menuEl.object3D.position.z.toFixed(2);
   out.hudHiddenInMenu = !hudEl.object3D.visible && hudEl.querySelectorAll(".hud-button").length === 0;
+  // Entrar no VR: a cabeça começa na altura 0 até o headset mandar a
+  // posição; o painel não pode ir para baixo do chão.
+  const cam = scene.camera.el.object3D;
+  const camY = cam.position.y;
+  cam.position.y = 0;
+  scene.emit("enter-vr");
+  for (let i = 0; i < 20; i++) await frame();
+  out.menuYWhileHeadUnknown = +menuEl.object3D.position.y.toFixed(2);
+  cam.position.y = 1.7;
+  for (let i = 0; i < 5; i++) await frame();
+  out.menuYAfterHeadTracked = +menuEl.object3D.position.y.toFixed(2);
+  cam.position.y = camY;
+  scene.emit("exit-vr");
+  for (let i = 0; i < 20; i++) await frame();
   await pressMenu("credits");
   out.creditsScreen = [menuEl.dataset.screen, menuEl.querySelector(".menu-credits-image").getAttribute("visible"),
     menuEl.querySelector(".menu-credits-image").getAttribute("src"), menuButtons().map((b) => b.dataset.option)];

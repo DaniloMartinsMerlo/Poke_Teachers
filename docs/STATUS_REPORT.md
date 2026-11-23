@@ -142,6 +142,10 @@ apagado.
   precisa ficar sem botões, e não só invisível.
 - Testar no headset de verdade mostra coisas que a simulação não mostra, como
   balões se sobrepondo.
+- Ao entrar no VR, o headset leva alguns quadros para informar a posição da
+  cabeça. Meu menu era posicionado nesse instante, com a câmera na altura 0, e
+  aparecia embaixo do chão. Passei a esperar a posição real da cabeça antes de
+  posicioná-lo.
 
 ## Próximos passos
 

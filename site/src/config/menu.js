@@ -51,9 +51,16 @@ export const MENU_TEXTS = Object.freeze({
 export const CREDITS_TEACHER = "Murilo";
 
 // Painel (m): à frente da cabeça, um pouco abaixo dos olhos.
+//   minHeight: o centro nunca fica abaixo disto (cabeça ainda sem posição).
+//   headReadyHeight: ao entrar no VR, a cabeça só conta como "rastreada"
+//     acima desta altura; espera até placeTimeoutMs e posiciona assim mesmo.
 export const MENU_LAYOUT = Object.freeze({
   distance: 1.4,
   drop: 0.15,
+  minHeight: 0.9,
+  headReadyHeight: 0.5,
+  placeDelayMs: 150,
+  placeTimeoutMs: 2000,
   width: 0.9,
   height: 0.8,
   button: Object.freeze({ width: 0.5, height: 0.1, gap: 0.03 }),

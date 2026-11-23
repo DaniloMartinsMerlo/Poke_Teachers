@@ -1,10 +1,10 @@
-import { EVENTS, HUD_BUTTON_CLASS } from "../../config/constants.js";
+import { EVENTS, HUD_BUTTON_CLASS, MAX_FRAME_MS } from "../../config/constants.js";
 import { HUD_COLORS, HUD_PINCH_REACH, HUD_STATUS_MS } from "../../config/hud.js";
 import {
   CREDITS_TEACHER, MENU_COLORS, MENU_LAYOUT, MENU_OPTIONS, MENU_SCREENS, MENU_TEXTS,
 } from "../../config/menu.js";
 import { teacherImage } from "../../config/teachers.js";
-import { chooseMenuOption, panelPlacement, stackPositions } from "../../domain/menu.js";
+import { canPlacePanel, chooseMenuOption, panelPlacement, stackPositions } from "../../domain/menu.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
 import { buttonAtPoint, pinchWorldPoint } from "../../utils/pinch.js";
 
@@ -18,7 +18,10 @@ import { buttonAtPoint, pinchWorldPoint } from "../../utils/pinch.js";
 // pinça da mão rastreada encostada no botão.
 //
 // O painel aparece na frente de onde a cabeça olha ao abrir o menu (e ao
-// entrar/sair do VR, quando a cabeça "pula"); fica parado no mundo. Fora
+// entrar/sair do VR, quando a cabeça "pula"); fica parado no mundo. Ao
+// entrar no VR, espera o headset mandar a posição da cabeça antes de
+// reposicionar (logo no início a câmera está na altura 0 e o painel iria
+// para baixo do chão). Fora
 // do menu ele some e fica sem botões, para nenhum raio acertá-lo.
 // Uma entidade na cena basta: <a-entity main-menu>.
 AFRAME.registerComponent("main-menu", {
@@ -31,11 +34,10 @@ AFRAME.registerComponent("main-menu", {
     this.build();
 
     this.onModeChanged = () => this.refresh();
+    // Entrou/saiu do VR: reposiciona quando a cabeça tiver posição (tick).
+    this.pendingPlaceMs = null;
     this.onViewChanged = () => {
-      if (this.isOpen()) {
-        // Espera a câmera do VR assumir a posição da cabeça.
-        setTimeout(() => this.place(), 0);
-      }
+      this.pendingPlaceMs = 0;
     };
     this.onPinch = (event) => this.pressAtPinch(event);
     const sceneEl = this.el.sceneEl;
@@ -109,7 +111,7 @@ AFRAME.registerComponent("main-menu", {
     camera.getWorldPosition(this.head);
     camera.getWorldDirection(this.forward);
     const yaw = Math.atan2(-this.forward.x, -this.forward.z);
-    const at = panelPlacement(this.head, yaw, MENU_LAYOUT.distance, MENU_LAYOUT.drop);
+    const at = panelPlacement(this.head, yaw, MENU_LAYOUT.distance, MENU_LAYOUT.drop, MENU_LAYOUT.minHeight);
     this.el.object3D.position.set(at.x, at.y, at.z);
     this.el.object3D.lookAt(this.head.x, at.y, this.head.z);
   },
@@ -194,6 +196,18 @@ AFRAME.registerComponent("main-menu", {
     const hit = point && buttonAtPoint(point, this.buttons, HUD_PINCH_REACH);
     if (hit) {
       this.choose(hit.option);
+    }
+  },
+
+  tick(time, delta) {
+    if (this.pendingPlaceMs === null || !this.isOpen() || !this.el.sceneEl.camera) {
+      return;
+    }
+    this.pendingPlaceMs += Math.min(delta || 0, MAX_FRAME_MS);
+    this.el.sceneEl.camera.getWorldPosition(this.head);
+    if (canPlacePanel(this.pendingPlaceMs, this.head.y, MENU_LAYOUT)) {
+      this.pendingPlaceMs = null;
+      this.place();
     }
   },
 

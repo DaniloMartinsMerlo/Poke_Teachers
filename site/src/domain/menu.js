@@ -30,15 +30,26 @@ export function chooseMenuOption(screen, option) {
 
 /**
  * Onde fica o painel: `distance` à frente da cabeça (direção horizontal
- * `yaw`, rad; 0 = olhando para -z) e `drop` abaixo dos olhos.
+ * `yaw`, rad; 0 = olhando para -z) e `drop` abaixo dos olhos, nunca abaixo
+ * de `minHeight`.
  * @param {{x:number, y:number, z:number}} head
  */
-export function panelPlacement(head, yaw, distance, drop) {
+export function panelPlacement(head, yaw, distance, drop, minHeight = -Infinity) {
   return {
     x: head.x - Math.sin(yaw) * distance,
-    y: head.y - drop,
+    y: Math.max(head.y - drop, minHeight),
     z: head.z - Math.cos(yaw) * distance,
   };
+}
+
+/**
+ * Ao entrar/sair do VR, já dá para posicionar o painel? Espera um pouco
+ * (`delayMs`) e a cabeça estar acima de `readyHeight` (o headset ainda
+ * não mandou a posição); depois de `timeoutMs`, posiciona assim mesmo.
+ */
+export function canPlacePanel(elapsedMs, headY, { placeDelayMs, placeTimeoutMs, headReadyHeight }) {
+  if (elapsedMs < placeDelayMs) return false;
+  return headY >= headReadyHeight || elapsedMs >= placeTimeoutMs;
 }
 
 /**

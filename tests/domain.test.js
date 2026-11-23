@@ -562,7 +562,7 @@ test("bola segurada: segmento prolongado pelo raio", () => {
 });
 
 // ------------------------------------------------------- tela inicial
-import { chooseMenuOption, panelPlacement, stackPositions } from "../site/src/domain/menu.js";
+import { canPlacePanel, chooseMenuOption, panelPlacement, stackPositions } from "../site/src/domain/menu.js";
 import { MENU_OPTIONS } from "../site/src/config/menu.js";
 
 test("menu: J1 x COMP abre a partida; J1 x J2 e créditos trocam de tela; Voltar volta", () => {
@@ -586,4 +586,15 @@ test("menu: painel à frente da cabeça e botões empilhados de cima para baixo"
   const ys = stackPositions(3, 0.1, 0.03);
   assert.ok(ys[0] > ys[1] && ys[1] > ys[2]);
   assert.ok(Math.abs(ys[1]) < 1e-9 && Math.abs(ys[0] - ys[1] - 0.13) < 1e-9);
+});
+
+test("menu: painel nunca abaixo da altura mínima; espera a cabeça ter posição no VR", () => {
+  // Cabeça ainda na altura 0 (VR acabou de ligar): painel não vai para o chão.
+  assert.equal(panelPlacement({ x: 0, y: 0, z: 7 }, 0, 1.4, 0.15, 0.9).y, 0.9);
+  assert.ok(Math.abs(panelPlacement({ x: 0, y: 1.7, z: 7 }, 0, 1.4, 0.15, 0.9).y - 1.55) < 1e-9);
+  const rules = { placeDelayMs: 150, placeTimeoutMs: 2000, headReadyHeight: 0.5 };
+  assert.equal(canPlacePanel(50, 1.6, rules), false); // espera um pouco
+  assert.equal(canPlacePanel(200, 0, rules), false); // cabeça sem posição
+  assert.equal(canPlacePanel(200, 1.6, rules), true);
+  assert.equal(canPlacePanel(2100, 0, rules), true); // desiste de esperar
 });

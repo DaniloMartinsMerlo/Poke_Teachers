@@ -193,7 +193,8 @@ Aponte (laser ou mouse) e clique, ou encoste a pinça no botão. No fim da parti
 │   └── e2e/              teste da cena real no Chrome headless
 ├── docs/
 │   ├── A_FAZER.md        o que falta implementar
-│   └── HISTORICO.md      o que já foi feito e por quê
+│   ├── HISTORICO.md      o que já foi feito e por quê
+│   └── STATUS_REPORT.md  decisões e aprendizados por data (para o professor)
 ├── Dockerfile, docker-compose.yml, Caddyfile
 └── .github/workflows/    testes + deploy no GitHub Pages
 ```

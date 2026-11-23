@@ -22,7 +22,13 @@ description: Guia para mexer no jogo de pokébolas em realidade virtual (A-Frame
 3. Atualize o `README.md` se mudou controles, estrutura ou como rodar.
 4. Atualize `docs/A_FAZER.md`: marque o que foi feito e acrescente o que
    ficou pendente.
-5. Diga ao usuário o que precisa ser testado no headset — o e2e simula
+5. Atualize `docs/STATUS_REPORT.md` (relatório para o professor): no fim
+   da "Linha do tempo", uma seção `### DD/MM — tema` com **Decisões** e
+   **O que aprendi**, em primeira pessoa, como se fosse o autor do projeto
+   falando (o porquê das escolhas, sem detalhe técnico de arquivos); ajuste
+   "Próximos passos" e a data no topo. Mesmo dia: acrescente à seção
+   existente.
+6. Diga ao usuário o que precisa ser testado no headset — o e2e simula
    VR, não substitui o Quest.
 
 ## Stack e execução

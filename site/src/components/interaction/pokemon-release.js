@@ -1,3 +1,4 @@
+import { ARENA_BOUNDS } from "../../config/arena.js";
 import { EVENTS } from "../../config/constants.js";
 import { playerInfo } from "../../config/players.js";
 import {
@@ -12,6 +13,7 @@ import {
   RELEASE_SURFACE,
 } from "../../config/pokemon.js";
 import { TEACHER_NAMES } from "../../config/teachers.js";
+import { isOutsideArena } from "../../domain/battle.js";
 import { pickByName, releasesPokemon } from "../../domain/landing.js";
 import { createEntity, vec3 } from "../../utils/entity.js";
 
@@ -22,7 +24,8 @@ import { createEntity, vec3 } from "../../utils/entity.js";
 // Cada jogador só tem um pokémon em campo (sistema "battle"): se já houver
 // um, a bola não abre e a cena recebe SEND_OUT_BLOCKED (o suporte a traz
 // de volta). Professor desmaiado (vida 0) também não sai até o reset do
-// jogo (reason "fainted"). O pokémon leva a cor e o rótulo do dono (anel no chão e
+// jogo (reason "fainted"). Bola fora da arena (além das muretas) não abre:
+// o suporte a traz de volta. O pokémon leva a cor e o rótulo do dono (anel no chão e
 // plaquinha), para distinguir os dois lados.
 //
 // O pokémon é filho da cena, e não da bola: a bola tem escala 0,01 e gira.
@@ -58,6 +61,10 @@ AFRAME.registerComponent("pokemon-release", {
     if (this.creature) {
       return;
     }
+    this.el.object3D.getWorldPosition(this.ballPosition);
+    if (isOutsideArena(this.ballPosition, ARENA_BOUNDS)) {
+      return;
+    }
     const sceneEl = this.el.sceneEl;
     const { player } = this.data;
     const blockedBy = this.el.components.pokeprof?.prof.isFainted()
@@ -67,7 +74,6 @@ AFRAME.registerComponent("pokemon-release", {
       sceneEl.emit(EVENTS.SEND_OUT_BLOCKED, { player, ball: this.el, reason: blockedBy }, false);
       return;
     }
-    this.el.object3D.getWorldPosition(this.ballPosition);
     const { facing } = this.data;
 
     // Vira para o adversário e fica um pouco à frente da bola.

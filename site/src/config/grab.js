@@ -26,3 +26,7 @@ export const RETURN_ARC_HEIGHT = 1;
 export const RETURN_SPINS = 2;
 // Espera depois de a bola cair antes de voltar, quando barrada (ms).
 export const BLOCKED_RETURN_DELAY = 300;
+// Bola solta fora da arena (ARENA_BOUNDS) por este tempo (ms) volta
+// sozinha para o suporte. A espera deixa ver a bola bater na
+// arquibancada antes de voltar.
+export const OUT_OF_ARENA_RETURN_DELAY = 800;

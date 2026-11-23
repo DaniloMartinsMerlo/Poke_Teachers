@@ -156,7 +156,10 @@ Quando o jogador alterna entre as mãos e os controles, o jogo detecta a mudanç
 
 - Você joga contra o computador (CPU), que fica do outro lado do campo. A CPU espera você lançar o primeiro PokeProf e então arremessa um dos dela.
 - Cada PokeProf tem um **tipo**: Rodinha é **Fogo**, Fabi é **Grama** e Murilo é **Água**. Fogo vence Grama, Grama vence Água e Água vence Fogo.
-- **Turnos:** cada jogador escolhe uma ação no menu de batalha, um **ataque** ou um **power-up**. Nada acontece até os dois escolherem. Depois, o PokeProf mais rápido age primeiro. Se ele derrubar o adversário, o outro não age.
+- **Turnos:** cada jogador escolhe uma ação no menu de batalha: um **ataque**, um **power-up** ou **trocar de PokeProf**. Nada acontece até os dois escolherem. Depois, o PokeProf mais rápido age primeiro. Se ele derrubar o adversário, o outro não age.
+- **Ataques** têm **precisão** (% de chance de acertar) e **PP** (quantas vezes cada PokeProf pode usá-los por partida). Quanto mais forte o ataque, menor a precisão e o PP. O botão mostra o dano estimado, a precisão e o PP restante. Ataque que erra não tira vida, mas gasta o turno e o PP. Sem PP, o botão fica travado até a próxima partida.
+- **Trocar** (pelo menu ou pegando a bola do campo) gasta o turno: o PokeProf adversário espera o novo chegar ao campo e então ataca. Depois de um desmaio, lançar o próximo não gasta nada.
+- Pokébola que cai fora da arena (arquibancada, atrás das muretas) não abre e volta sozinha para o suporte.
 - **Power-ups** gastam o turno. *Ponto Extra* (+50% de ataque), *Cola Liberada* (+80% de velocidade) e *Feriado* (+100% de defesa) valem só no turno seguinte. *Intervalo* cura 35% da vida na hora.
 - PokeProf com a vida zerada volta para a pokébola e não pode mais lutar. Lance outro.
 - Quem ficar sem PokeProfs perde. O menu mostra o resultado e o botão **Jogar de novo**.

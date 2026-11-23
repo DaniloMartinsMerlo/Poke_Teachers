@@ -95,5 +95,5 @@ export const HUD_LOG_COLORS = Object.freeze({ p1: "#7fb6ff", p2: "#ff8a75", turn
 //   para continuar legíveis do outro lado do campo (mínimo 1).
 export const FIELD_CALLOUT = Object.freeze({
   height: 1.1, noteOffset: 0.17, rise: 0.3, duration: 2200, scalePerMeter: 0.22,
-  damageColor: "#ff5a4a", healColor: "#4cd964", noteColor: "#ffd23f",
+  damageColor: "#ff5a4a", missColor: "#ffffff", healColor: "#4cd964", noteColor: "#ffd23f",
 });

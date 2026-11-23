@@ -98,8 +98,26 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   ou WebRTC ponto a ponto; quem resolve o turno — servidor ou um dos
   jogadores como "anfitrião"). O J2 hoje é a CPU (`cpu-player`); o
   `battle-hud` já aceita `player: p2`.
-- [ ] **Trocar PokeProf gasta o turno?** Hoje trocar é livre (fora da
-  resolução) e apaga a escolha feita; no Pokémon trocar gasta a vez.
+- [x] **Precisão (% de acerto) e PP dos ataques.** Cada ataque ganha
+  `accuracy` (% de chance de acertar; sorteio a cada uso, `random`
+  injetável; errou = sem dano, o turno é gasto) e `pp` (quantas vezes pode
+  ser usado por partida, contadas por PokeProf). Com PP zerado o botão
+  fica travado até o reset.
+  - **Equilíbrio:** quanto mais dano, menos precisão e/ou menos PP. Ex.
+    com os ataques atuais (`ATTACKS` em `config/battle.js`): Chamada Oral
+    (30) 100% / 15 PP, Prova Surpresa (40) 90% / 10 PP, Trabalho em Grupo
+    (50) 80% / 8 PP, Reprovar (60) 65% / 5 PP. Motivo: hoje usar sempre
+    "Reprovar" vence ~87% das partidas contra a CPU.
+  - HUD: mostrar `%` e `PP restante/total` no botão. O balão e o registro
+    mostram "Errou!" quando o ataque falha.
+  - CPU: só sorteia ataques que ainda têm PP.
+  - Regras puras no `domain/` (acerto, gasto e reset de PP). Testes:
+    acerto/erro com `random` fixo, PP chegando a zero, botão travado,
+    reset restaurando o PP.
+- [x] **Trocar PokeProf gasta o turno.** Decidido: sim. O PokeProf do
+  adversário espera o novo chegar ao campo para atacar (o ataque acerta
+  quem entrou). Fora de um turno aberto (adversário sem PokeProf em campo,
+  depois de um desmaio) a troca continua livre.
 - [ ] **Desistir** (hoje não faz nada; dá para reusar o fim de jogo).
 - [ ] HUD do **jogador 2** humano (`battle-hud` já aceita `player: p2`),
   para dois jogadores (ver item acima).
@@ -107,14 +125,32 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
   power-up (25%), mira do arremesso (`CPU` em `config/battle.js`).
 - [ ] Definir os professores do adversário quando houver mais imagens
   (hoje são os mesmos 3, em outra ordem).
+- [ ] **Balões no campo se sobrepõem** (visto no Quest 3). O dano tomado
+  muitas vezes fica coberto por outros balões, e o balão de um PokeProf
+  fica na frente do balão do adversário, sem dar para ler. Ideias:
+  empilhar/deslocar os balões que aparecem ao mesmo tempo, atrasar o
+  balão do segundo a agir. O registro no HUD lateral já resolve, então a
+  prioridade é baixa (`battle-callouts`, `FIELD_CALLOUT` em
+  `config/hud.js`).
+- [ ] **"Super efetivo!" / "Pouco efetivo..." apagados.** O texto amarelo
+  abaixo do PokeProf fica fraco: aumentar o contraste (contorno ou fundo
+  escuro, cor mais forte).
 
 ## Interação e VR
 
 - [x] Pokébola segurada atravessava paredes e o chão.
-- [ ] Mãos rastreadas não mostram a prévia da pokébola (não têm raio):
-  mostrar quando a mão chega perto.
-- [ ] Só com as mãos não dá para andar nem resetar (sem analógico nem
-  B/Y): pensar em um gesto.
+- [x] **Pokébola fora da arena volta para o suporte.** Bola que cai na
+  arquibancada colide, não abre e não conta como PokeProf em campo (está
+  certo). Falta: quando sai dos limites da arena (arquibancada, fora do
+  campo/muretas), voltar para o encaixe livre do suporte do dono, com a
+  mesma animação do recolher (bola voa de volta). Regra "dentro/fora da
+  arena" pura no `domain/`.
+- [ ] **Mãos rastreadas não mostram a prévia da pokébola** (não têm
+  raio): mostrar o card do PokeProf quando a mão chega perto da bola.
+  Pedido depois de validar a pinça no Quest 3.
+- [ ] **Gesto de reset só com as mãos** (sem B/Y). Também não dá para
+  andar só com as mãos: pensar em um gesto para isso. Pedido depois de
+  validar a pinça no Quest 3.
 - [ ] Trocar os pokémons de primitivas por modelos `.glb` (Blender).
 - [ ] **Controles no computador (teclado/mouse): decidir entre remover ou
   corrigir.** Hoje não funcionam direito no navegador e foram retirados da
@@ -125,14 +161,25 @@ tempo, apague-o daqui. Ideias novas entram no fim da seção certa.
 
 ## Validar no Quest 3
 
-- [ ] Bola segurada contra parede/chão/suporte: desliza rente sem
-  tremer? Volta para a mão ao afastar?
-- [ ] Partida contra a CPU: ritmo do turno (esperas), mensagens do HUD,
-  cartão com power-up e tela de fim de jogo legíveis.
-- [ ] Balões no campo: tamanho/legibilidade perto e do outro lado do
-  campo. Registro da batalha: letra pequena demais? Largura do HUD com o
-  registro (~80 cm) confortável?
-- [ ] Pinça e troca mão ↔ controle; colisão andando de verdade.
-- [ ] Colisões dos arremessos contra arquibancadas e torres.
-- [ ] HUD: legibilidade, pinça nos botões, conforto ao seguir o corpo.
-- [ ] Carretilha do controle reta ao longo do laser.
+- [ ] PP e precisão no botão de ataque ("~33 dano | 65% | PP 5/5"):
+  legível? Balão "Errou!" em branco se destaca?
+- [ ] Trocar gastando o turno: dá para entender que o adversário está
+  esperando o novo PokeProf? (status "Volte, X! (gasta o turno)" e
+  registro "J1 trocou: X entrou").
+- [ ] Bola na arquibancada/fora do estádio: a espera (0,8 s) antes de
+  voltar parece boa?
+
+- [x] Bola segurada contra parede/chão/suporte: desliza rente.
+- [x] Partida contra a CPU: ritmo do turno, mensagens do HUD, cartão com
+  power-up e tela de fim de jogo legíveis.
+- [x] Balões no campo e registro da batalha: tamanho e legibilidade ok.
+  Sobreposição e contraste do texto de efetividade foram para **Batalha**.
+- [x] Pinça funciona bem.
+- [ ] Troca mão ↔ controle; colisão andando de verdade.
+- [x] Colisões dos arremessos contra arquibancadas e torres: colide e não
+  abre (certo). Voltar para o suporte ao sair da arena foi para
+  **Interação e VR**.
+- [x] HUD: legibilidade ok.
+- [ ] HUD: pinça nos botões, conforto ao seguir o corpo.
+- [x] Carretilha do controle reta ao longo do laser. Passando o laser
+  pelo chão a bola fica defasada: aceito, sem correção.

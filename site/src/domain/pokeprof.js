@@ -5,6 +5,9 @@
 // Power-up de atributo ("boost", config/battle.js): usado num turno, fica
 // "pendente" e só vale no turno seguinte ("ativo"); depois expira.
 // `endTurn()` faz essa passagem no fim de cada turno.
+//
+// PP: cada ataque tem um número de usos por partida (config/battle.js),
+// contado por PokeProf; `restorePp()` devolve tudo no reset.
 
 export class Pokeprof {
   /**
@@ -19,6 +22,34 @@ export class Pokeprof {
     this.hp = stats.hp;
     this.pendingBoost = null;
     this.activeBoost = null;
+    // PP gasto por ataque (id → usos nesta partida).
+    this.usedPp = new Map();
+  }
+
+  /** PP restante do ataque `move` ({id, pp}). Sem `pp`: ilimitado. */
+  ppLeft(move) {
+    if (typeof move.pp !== "number") {
+      return Infinity;
+    }
+    return Math.max(0, move.pp - (this.usedPp.get(move.id) || 0));
+  }
+
+  hasPp(move) {
+    return this.ppLeft(move) > 0;
+  }
+
+  /** Gasta 1 PP do ataque; falso se não havia PP. */
+  spendPp(move) {
+    if (!this.hasPp(move)) {
+      return false;
+    }
+    this.usedPp.set(move.id, (this.usedPp.get(move.id) || 0) + 1);
+    return true;
+  }
+
+  /** Devolve todo o PP (reset da partida). */
+  restorePp() {
+    this.usedPp.clear();
   }
 
   maxHp() {

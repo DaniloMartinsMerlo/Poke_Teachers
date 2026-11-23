@@ -89,7 +89,8 @@ test("analógico para frente afasta, para trás puxa, zona morta ignora", () => 
   assert.equal(thumbstickReel(0.1, 4, 0.1, 0.15), 0);
 });
 
-import { approachAngle, arcPoint, canSendOut, returnSlot } from "../site/src/domain/battle.js";
+import { approachAngle, arcPoint, canSendOut, isOutsideArena, returnSlot } from "../site/src/domain/battle.js";
+import { ARENA_BOUNDS } from "../site/src/config/arena.js";
 import {
   calloutTexts, chooseHudOption, effectivenessNote, logLine, optionDetail, pullWithin, pullWithin1D,
 } from "../site/src/domain/hud.js";
@@ -137,9 +138,17 @@ test("HUD: navegação entre páginas e ações anunciadas", () => {
   assert.deepEqual(chooseHudOption("gameover", { action: "attack" }), { page: "gameover", emit: null });
 });
 
-test("HUD: poder embaixo dos ataques e efeito no badge dos power-ups", () => {
+test("HUD: poder/dano, precisão e PP embaixo dos ataques; efeito no badge dos power-ups", () => {
   assert.equal(optionDetail({ id: "x", power: 60 }), "Poder 60");
-  assert.equal(optionDetail({ id: "x", power: 60 }, 32), "Poder 60 (~32 dano)");
+  assert.equal(optionDetail({ id: "x", power: 60 }, 32), "~32 dano");
+  const move = { id: "x", power: 60, accuracy: 65, pp: 5 };
+  assert.equal(optionDetail(move), "Poder 60 | 65% | PP 5/5");
+  assert.equal(optionDetail(move, 32, 2), "~32 dano | 65% | PP 2/5");
+  // Cabe numa linha do botão (wrap-count 30), no pior caso.
+  for (const a of ATTACKS) {
+    assert.ok(optionDetail(a, 999, a.pp).length <= 30);
+    assert.ok(optionDetail(a).length <= 30);
+  }
   assert.equal(optionDetail({ effect: "heal", percent: 35 }), "Cura 35% HP");
   assert.equal(optionDetail({ effect: "boost", short: "VEL", percent: 80 }), "VEL +80% (1 turno)");
   assert.equal(optionDetail({ action: "back" }), "");
@@ -156,6 +165,12 @@ test("balões e registro: golpe, dano, efetividade, desmaio, power-up", () => {
   assert.deepEqual(calloutTexts(heal), { actor: "Intervalo! +35 HP", target: null, note: "" });
   const boost = { kind: "powerup", actorName: "Murilo", label: "Feriado", powerup: { effect: "boost", short: "DEF", percent: 100 } };
   assert.equal(logLine(boost, "J1"), "J1 Murilo: Feriado DEF +100%");
+  // Errou e troca.
+  assert.deepEqual(calloutTexts({ ...hit, damage: 0, missed: true }), { actor: "Chamada Oral!", target: "Errou!", note: "" });
+  assert.equal(logLine({ ...hit, damage: 0, missed: true }, "J2"), "J2 Rodinha: Chamada Oral errou!");
+  const swap = { kind: "switch", player: "p1", target: "p2", actorName: "Murilo", label: "Troca" };
+  assert.deepEqual(calloutTexts(swap), { actor: "Vai, Murilo!", target: null, note: "" });
+  assert.equal(logLine(swap, "J1"), "J1 trocou: Murilo entrou");
   // Todas as linhas possíveis cabem numa linha do registro (HUD_LOG.wrapCount).
   for (const t of ["Fabi", "Murilo", "Rodinha"]) {
     for (const a of ATTACKS) {
@@ -194,7 +209,7 @@ import {
 } from "../site/src/config/teachers.js";
 import { ATTACKS, BALANCE_TEST_POWER, DAMAGE_RULES, POWERUPS } from "../site/src/config/battle.js";
 import {
-  ACTION_KINDS, TurnChoices, isTeamDefeated, performAction, planTurn, resolveTurn,
+  ACTION_KINDS, SWITCH_CHOICE, TurnChoices, isTeamDefeated, performAction, planTurn, resolveTurn, rollHit,
 } from "../site/src/domain/turn.js";
 import {
   CPU_EFFECTS, CPU_STATES, ballisticVelocity, nextCpuState, pickAction, pickProf,
@@ -261,6 +276,9 @@ for (const winner of TEACHER_NAMES) {
 
 // ---------------------------------------------------------------- turnos
 const RULES = { attacks: ATTACKS, powerups: POWERUPS, typeBeats: TYPE_BEATS, rules: DAMAGE_RULES };
+// Sorteio que sempre acerta (0 < precisão) e, no empate, põe o 1º lado na frente.
+const HIT = () => 0;
+const MISS = () => 0.9999;
 const prof = (name) => new Pokeprof(name, teacherStats(name), teacherType(name));
 const side = (player, p, kind, id) => ({ player, prof: p, choice: { kind, id } });
 const attack = (player, p, id = "prova-surpresa") => side(player, p, ACTION_KINDS.ATTACK, id);
@@ -284,7 +302,7 @@ test("turno: espera as duas escolhas; uma escolha por jogador", () => {
 test("turno: o mais rápido age primeiro e os dois atacam", () => {
   const rodinha = prof("Rodinha"); // VEL 70
   const murilo = prof("Murilo"); // VEL 40
-  const results = resolveTurn([attack("p1", murilo), attack("p2", rodinha)], RULES);
+  const results = resolveTurn([attack("p1", murilo), attack("p2", rodinha)], RULES, HIT);
   assert.deepEqual(results.map((r) => r.player), ["p2", "p1"]);
   assert.ok(rodinha.hp < rodinha.maxHp() && murilo.hp < murilo.maxHp());
   assert.equal(results[0].damage, murilo.maxHp() - murilo.hp);
@@ -294,7 +312,7 @@ test("turno: se o primeiro derruba o outro, o segundo não age", () => {
   const rodinha = prof("Rodinha");
   const murilo = prof("Murilo");
   murilo.takeDamage(murilo.hp - 1);
-  const results = resolveTurn([attack("p1", murilo), attack("p2", rodinha)], RULES);
+  const results = resolveTurn([attack("p1", murilo), attack("p2", rodinha)], RULES, HIT);
   assert.equal(results.length, 1);
   assert.equal(results[0].fainted, true);
   assert.equal(rodinha.hp, rodinha.maxHp());
@@ -304,12 +322,12 @@ test("power-up: não vale no turno do uso; vale no seguinte; expira depois", () 
   const fabi = prof("Fabi");
   const murilo = prof("Murilo");
   // Turno 1: Murilo usa Feriado (DEF +100%) e Fabi ataca: dano normal.
-  const normal = resolveTurn([attack("p1", fabi), powerup("p2", murilo, "feriado")], RULES)[0].damage;
+  const normal = resolveTurn([attack("p1", fabi), powerup("p2", murilo, "feriado")], RULES, HIT)[0].damage;
   assert.equal(murilo.activeBoost.id, "feriado");
   assert.equal(murilo.effectiveStats().defense, 120);
   // Turno 2: com a defesa dobrada, o mesmo ataque tira menos.
   const before = murilo.hp;
-  resolveTurn([attack("p1", fabi), attack("p2", murilo, "chamada-oral")], RULES);
+  resolveTurn([attack("p1", fabi), attack("p2", murilo, "chamada-oral")], RULES, HIT);
   assert.ok(before - murilo.hp < normal);
   // Turno 3: expirou.
   assert.equal(murilo.activeBoost, null);
@@ -319,7 +337,7 @@ test("power-up: não vale no turno do uso; vale no seguinte; expira depois", () 
 test("power-up: velocidade faz o mais lento agir primeiro no turno seguinte", () => {
   const rodinha = prof("Rodinha"); // 70
   const murilo = prof("Murilo"); // 40 → 72 com Cola Liberada
-  const first = resolveTurn([powerup("p1", murilo, "cola-liberada"), attack("p2", rodinha)], RULES);
+  const first = resolveTurn([powerup("p1", murilo, "cola-liberada"), attack("p2", rodinha)], RULES, HIT);
   assert.equal(first[0].player, "p2"); // no turno do uso, ainda é o mais lento
   assert.equal(murilo.effectiveStats().speed, 72);
   const order = planTurn([attack("p1", murilo), attack("p2", rodinha)]);
@@ -332,18 +350,84 @@ test("power-up: ataque aumentado tira mais; cura vale na hora sem passar do máx
   const boosted = prof("Murilo");
   const target = () => prof("Rodinha");
   const t1 = target();
-  const dmgPlain = performAction(attack("p1", plain), side("p2", t1), RULES).damage;
+  const dmgPlain = performAction(attack("p1", plain), side("p2", t1), RULES, HIT).damage;
   boosted.queueBoost(POWERUPS.find((p) => p.id === "ponto-extra"));
   boosted.endTurn();
   const t2 = target();
-  const dmgBoosted = performAction(attack("p1", boosted), side("p2", t2), RULES).damage;
+  const dmgBoosted = performAction(attack("p1", boosted), side("p2", t2), RULES, HIT).damage;
   assert.ok(dmgBoosted > dmgPlain);
   fabi.takeDamage(10);
-  const heal = performAction(powerup("p1", fabi, "intervalo"), side("p2", t1), RULES);
+  const heal = performAction(powerup("p1", fabi, "intervalo"), side("p2", t1), RULES, HIT);
   assert.equal(heal.healed, 10);
   assert.equal(fabi.hp, fabi.maxHp());
   fabi.takeDamage(90);
-  assert.equal(performAction(powerup("p1", fabi, "intervalo"), side("p2", t1), RULES).healed, 35);
+  assert.equal(performAction(powerup("p1", fabi, "intervalo"), side("p2", t1), RULES, HIT).healed, 35);
+});
+
+test("precisão: sorteio abaixo da precisão acerta; 100% sempre acerta", () => {
+  assert.equal(rollHit(65, () => 0.64), true);
+  assert.equal(rollHit(65, () => 0.65), false);
+  assert.equal(rollHit(100, () => 0.9999), true);
+  assert.equal(rollHit(undefined, () => 0.9999), true);
+});
+
+test("precisão: ataque que erra não tira vida, mas gasta o PP e o turno", () => {
+  const fabi = prof("Fabi");
+  const murilo = prof("Murilo");
+  const move = ATTACKS.find((a) => a.id === "reprovacao");
+  const result = performAction(attack("p1", fabi, "reprovacao"), side("p2", murilo), RULES, MISS);
+  assert.equal(result.missed, true);
+  assert.equal(result.damage, 0);
+  assert.equal(murilo.hp, murilo.maxHp());
+  assert.equal(fabi.ppLeft(move), move.pp - 1);
+  assert.equal(result.ppLeft, move.pp - 1);
+});
+
+test("precisão: mais dano, menos precisão e menos PP", () => {
+  const byPower = [...ATTACKS].sort((a, b) => a.power - b.power);
+  for (let i = 1; i < byPower.length; i++) {
+    assert.ok(byPower[i].accuracy <= byPower[i - 1].accuracy, `${byPower[i].id} precisão`);
+    assert.ok(byPower[i].pp <= byPower[i - 1].pp, `${byPower[i].id} PP`);
+    assert.ok(byPower[i].accuracy < byPower[i - 1].accuracy || byPower[i].pp < byPower[i - 1].pp);
+  }
+});
+
+test("PP: acaba depois de N usos, por PokeProf; sem PP não ataca; reset devolve", () => {
+  const fabi = prof("Fabi");
+  const outra = prof("Fabi");
+  const move = ATTACKS.find((a) => a.id === "reprovacao");
+  for (let i = 0; i < move.pp; i++) {
+    assert.ok(performAction(attack("p1", fabi, "reprovacao"), side("p2", prof("Murilo")), RULES, HIT));
+  }
+  assert.equal(fabi.ppLeft(move), 0);
+  assert.equal(fabi.hasPp(move), false);
+  assert.equal(outra.ppLeft(move), move.pp);
+  const target = prof("Murilo");
+  assert.equal(performAction(attack("p1", fabi, "reprovacao"), side("p2", target), RULES, HIT), null);
+  assert.equal(target.hp, target.maxHp());
+  fabi.restorePp();
+  assert.equal(fabi.ppLeft(move), move.pp);
+});
+
+test("PP: ataque em alvo desmaiado não acontece nem gasta PP", () => {
+  const fabi = prof("Fabi");
+  const murilo = prof("Murilo");
+  murilo.takeDamage(1000);
+  const move = ATTACKS.find((a) => a.id === "chamada-oral");
+  assert.equal(performAction(attack("p1", fabi, "chamada-oral"), side("p2", murilo), RULES, HIT), null);
+  assert.equal(fabi.ppLeft(move), move.pp);
+});
+
+test("troca: vai primeiro mesmo sendo mais lento e o adversário ataca quem entrou", () => {
+  const rodinha = prof("Rodinha"); // VEL 70
+  const murilo = prof("Murilo"); // VEL 40, acabou de entrar
+  const swap = { player: "p1", prof: murilo, choice: SWITCH_CHOICE };
+  const order = planTurn([swap, attack("p2", rodinha)]);
+  assert.equal(order[0][0].player, "p1");
+  const results = resolveTurn([swap, attack("p2", rodinha)], RULES, HIT);
+  assert.deepEqual(results.map((r) => r.kind), ["switch", "attack"]);
+  assert.ok(murilo.hp < murilo.maxHp());
+  assert.equal(rodinha.hp, rodinha.maxHp());
 });
 
 test("fim de jogo: time perde quando todos desmaiam", () => {
@@ -437,6 +521,23 @@ test("CPU: arremesso em arco chega ao alvo", () => {
   const at = (k) => from.y + v.y * k + 0.5 * g * k * k;
   assert.ok(Math.abs(at(t) - to.y) < 1e-9);
   assert.ok(Math.abs(from.x + v.x * t - to.x) < 1e-9 && Math.abs(from.z + v.z * t - to.z) < 1e-9);
+});
+
+test("CPU: sem PP em nenhum ataque, usa power-up", () => {
+  const choice = pickAction({ attacks: [], powerups: POWERUPS, powerupChance: 0, random: () => 0 });
+  assert.equal(choice.kind, ACTION_KINDS.POWERUP);
+  const onlyHeal = POWERUPS.filter((p) => p.effect === "heal");
+  assert.equal(pickAction({ attacks: [], powerups: onlyHeal, powerupChance: 0, hpFull: true, random: () => 0 }).id, "intervalo");
+});
+
+// ------------------------------------------------------- fora da arena
+test("arena: bola dentro das muretas está dentro; arquibancada e fundo, fora", () => {
+  assert.equal(isOutsideArena({ x: 0, z: 0 }, ARENA_BOUNDS), false);
+  assert.equal(isOutsideArena({ x: 0.6, z: 7 }, ARENA_BOUNDS), false); // suporte
+  assert.equal(isOutsideArena({ x: 6.9, z: -9.9 }, ARENA_BOUNDS), false);
+  assert.equal(isOutsideArena({ x: 8.5, z: 0 }, ARENA_BOUNDS), true); // arquibancada
+  assert.equal(isOutsideArena({ x: -7.2, z: 3 }, ARENA_BOUNDS), true); // mureta
+  assert.equal(isOutsideArena({ x: 0, z: 10.5 }, ARENA_BOUNDS), true);
 });
 
 // ---------------------------------------------------- bola segurada

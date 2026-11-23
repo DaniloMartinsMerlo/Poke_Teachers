@@ -1,13 +1,31 @@
 // Sistema de turnos (sem A-Frame).
 //
 // Cada jogador escolhe UMA ação por turno para o PokeProf em campo: um
-// ataque ou um power-up. Nada acontece enquanto os dois não escolheram.
-// Com as duas escolhas, o mais rápido (atributos com power-up ativo) age
-// primeiro; se ele derrubar o outro, o segundo não age. No fim do turno os
-// power-ups de atributo usados nele passam a valer (ver Pokeprof).
+// ataque, um power-up ou trocar de PokeProf. Nada acontece enquanto os
+// dois não escolheram. Com as duas escolhas, quem trocou vai primeiro (a
+// troca já aconteceu: o novo PokeProf só "se apresenta"); entre os
+// outros, o mais rápido (atributos com power-up ativo) age primeiro; se
+// ele derrubar o outro, o segundo não age. No fim do turno os power-ups de
+// atributo usados nele passam a valer (ver Pokeprof).
+//
+// Ataque: gasta 1 PP e sorteia o acerto (`accuracy` %); errou = sem dano.
 import { advantageMultiplier, calculateDamage, turnOrder } from "./combat.js";
 
-export const ACTION_KINDS = Object.freeze({ ATTACK: "attack", POWERUP: "powerup" });
+export const ACTION_KINDS = Object.freeze({ ATTACK: "attack", POWERUP: "powerup", SWITCH: "switch" });
+
+/** Escolha de troca (o id é fixo: não há opções). */
+export const SWITCH_CHOICE = Object.freeze({ kind: ACTION_KINDS.SWITCH, id: "switch" });
+
+/**
+ * O ataque acerta? `accuracy` em % (sem valor: sempre acerta).
+ * `random` injetável para teste.
+ */
+export function rollHit(accuracy, random = Math.random) {
+  if (typeof accuracy !== "number" || accuracy >= 100) {
+    return true;
+  }
+  return random() * 100 < accuracy;
+}
 
 /** Escolhas do turno atual, por jogador: { kind, id }. */
 export class TurnChoices {
@@ -60,36 +78,52 @@ export function fighter(prof) {
  */
 export function planTurn(sides, random = Math.random) {
   const [a, b] = sides.map((side) => ({ side, stats: side.prof.effectiveStats() }));
-  const [first, second] = turnOrder(a, b, random).map((entry) => entry.side);
+  let [first, second] = turnOrder(a, b, random).map((entry) => entry.side);
+  // Troca tem prioridade (como no Pokémon).
+  if (isSwitch(second) && !isSwitch(first)) {
+    [first, second] = [second, first];
+  }
   return [[first, second], [second, first]];
 }
 
+const isSwitch = (side) => side.choice?.kind === ACTION_KINDS.SWITCH;
+
 /**
- * Aplica a ação de `actor` (ataque em `target` ou power-up nele mesmo).
- * Quem está desmaiado não age; ataque em alvo desmaiado não acontece.
+ * Aplica a ação de `actor` (ataque em `target`, power-up nele mesmo ou a
+ * apresentação de quem acabou de trocar). Quem está desmaiado não age;
+ * ataque em alvo desmaiado não acontece (nem gasta PP).
  * @param {{attacks:object[], powerups:object[], typeBeats:Record<string,string>, rules:object}} rules
+ * @param {() => number} [random] sorteio do acerto
  * @returns {null | {
  *   kind: string, player: string, target: string, label: string,
- *   damage?: number, fainted?: boolean, multiplier?: number (vantagem de tipo),
+ *   damage?: number, missed?: boolean, fainted?: boolean,
+ *   multiplier?: number (vantagem de tipo), ppLeft?: number,
  *   powerup?: object, healed?: number
  * }} o que aconteceu (null = não agiu)
  */
-export function performAction(actor, target, rules) {
+export function performAction(actor, target, rules, random = Math.random) {
   const { choice } = actor;
   if (!choice || actor.prof.isFainted()) {
     return null;
   }
   const base = { kind: choice.kind, player: actor.player, target: target.player };
+  if (choice.kind === ACTION_KINDS.SWITCH) {
+    return { ...base, label: "Troca" };
+  }
   if (choice.kind === ACTION_KINDS.ATTACK) {
     const move = rules.attacks.find((item) => item.id === choice.id);
-    if (!move || target.prof.isFainted()) {
+    if (!move || target.prof.isFainted() || !actor.prof.spendPp(move)) {
       return null;
     }
     const attacker = fighter(actor.prof);
     const defender = fighter(target.prof);
-    const damage = target.prof.takeDamage(calculateDamage(attacker, defender, move.power, rules.typeBeats, rules.rules));
     const multiplier = advantageMultiplier(attacker.type, defender.type, rules.typeBeats, rules.rules);
-    return { ...base, label: move.label, damage, fainted: target.prof.isFainted(), multiplier };
+    const ppLeft = actor.prof.ppLeft(move);
+    if (!rollHit(move.accuracy, random)) {
+      return { ...base, label: move.label, damage: 0, missed: true, fainted: false, multiplier, ppLeft };
+    }
+    const damage = target.prof.takeDamage(calculateDamage(attacker, defender, move.power, rules.typeBeats, rules.rules));
+    return { ...base, label: move.label, damage, missed: false, fainted: target.prof.isFainted(), multiplier, ppLeft };
   }
   if (choice.kind === ACTION_KINDS.POWERUP) {
     const powerup = rules.powerups.find((item) => item.id === choice.id);
@@ -114,7 +148,7 @@ export function finishTurn(sides) {
 /** Resolve o turno inteiro de uma vez. Retorna as ações, na ordem. */
 export function resolveTurn(sides, rules, random = Math.random) {
   const results = planTurn(sides, random)
-    .map(([actor, target]) => performAction(actor, target, rules))
+    .map(([actor, target]) => performAction(actor, target, rules, random))
     .filter(Boolean);
   finishTurn(sides);
   return results;

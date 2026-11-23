@@ -21,12 +21,18 @@ export const FAINT_RECALL_DELAY = 900;
 export const BALANCE_TEST_POWER = 40;
 
 // Ataques do menu: "power" é o poder na fórmula acima.
+//   accuracy: % de chance de acertar (sorteio a cada uso; errou = sem
+//     dano, mas o turno e o PP são gastos).
+//   pp: quantas vezes cada PokeProf pode usar o ataque por partida (o
+//     reset devolve). Sem PP, o botão fica travado.
+// Equilíbrio: quanto mais forte, menos precisão e menos PP. Motivo: antes
+// disto, usar sempre "Reprovar" vencia ~87% das partidas contra a CPU.
 // Textos sem acento (fonte do A-Frame).
 export const ATTACKS = Object.freeze([
-  { id: "prova-surpresa", label: "Prova Surpresa", power: 40 },
-  { id: "chamada-oral", label: "Chamada Oral", power: 30 },
-  { id: "trabalho-em-grupo", label: "Trabalho em Grupo", power: 50 },
-  { id: "reprovacao", label: "Reprovar", power: 60 },
+  { id: "prova-surpresa", label: "Prova Surpresa", power: 40, accuracy: 90, pp: 10 },
+  { id: "chamada-oral", label: "Chamada Oral", power: 30, accuracy: 100, pp: 15 },
+  { id: "trabalho-em-grupo", label: "Trabalho em Grupo", power: 50, accuracy: 80, pp: 8 },
+  { id: "reprovacao", label: "Reprovar", power: 60, accuracy: 65, pp: 5 },
 ]);
 
 // Power-ups: usar um gasta a ação do turno (não ataca).

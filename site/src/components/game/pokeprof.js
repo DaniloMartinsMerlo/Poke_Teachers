@@ -6,7 +6,8 @@ import { Pokeprof } from "../../domain/pokeprof.js";
 // jogadores com o mesmo professor têm vidas separadas). Atributos base e
 // tipo vêm de config/teachers.js. Avisa POKEPROF_CHANGED na bola quando a
 // vida ou o power-up muda e POKEPROF_FAINTED (sobe até a cena) quando a
-// vida chega a 0; o reset do jogo cura todos e tira os power-ups.
+// vida chega a 0; o reset do jogo cura todos, tira os power-ups e devolve
+// o PP dos ataques.
 AFRAME.registerComponent("pokeprof", {
   schema: {
     name: { type: "string", default: "" },
@@ -16,6 +17,7 @@ AFRAME.registerComponent("pokeprof", {
     this.prof = new Pokeprof(this.data.name, teacherStats(this.data.name), teacherType(this.data.name));
     this.onGameReset = () => {
       this.prof.clearBoosts();
+      this.prof.restorePp();
       this.heal();
       this.changed();
     };

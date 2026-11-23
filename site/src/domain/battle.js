@@ -13,6 +13,15 @@ export function canSendOut(active, player, ball) {
 }
 
 /**
+ * A posição está fora da arena? (além do lado de dentro das muretas)
+ * @param {{x:number, z:number}} position
+ * @param {{halfWidth:number, halfLength:number}} bounds
+ */
+export function isOutsideArena(position, bounds) {
+  return Math.abs(position.x) > bounds.halfWidth || Math.abs(position.z) > bounds.halfLength;
+}
+
+/**
  * Para onde a bola volta no suporte: o encaixe dela, se livre; senão o
  * primeiro livre; sem nenhum livre, o dela mesmo assim.
  * @param {number} home índice do encaixe da bola

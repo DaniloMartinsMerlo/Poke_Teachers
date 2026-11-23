@@ -324,6 +324,8 @@ async function run() {
   out.logLines = [...hud.querySelectorAll(".hud-log-line")].map((t) => t.getAttribute("value")).filter(Boolean);
   out.logRightOfPanel = hud.querySelector(".hud-log").object3D.position.x > 0.2;
   out.cardHpAfterAttack = hpText();
+  out.ppAfterFirstTurn = battle.ppLeft("p1", "prova-surpresa");
+  out.firstTurnMissed = actions.filter((a) => a.missed).map((a) => a.player);
   out.opponentCardHpAfterAttack = opponentCard()?.querySelector(".hp-text").getAttribute("value");
   out.hpBarScale = +p2Card.hpBar.object3D.scale.x.toFixed(2);
   out.attackUnlockedAfterTurn = buttonLocked("attack");
@@ -342,6 +344,12 @@ async function run() {
   await press("switch");
   out.switchStatus = status();
   out.switchBallReturning = p1Rack.balls[0].hasAttribute("data-returning");
+  // Trocar gasta o turno: vira a escolha do J1; o J2 escolhe, mas o turno
+  // só resolve quando o novo PokeProf chegar.
+  out.switchIsTurnChoice = battle.isSwitching("p1");
+  out.attackLockedAfterSwitch = buttonLocked("attack");
+  out.p2ChoosesWhileP1Switches = battle.choose("p2", { kind: "attack", id: "chamada-oral" });
+  out.turnWaitsForNewProf = !battle.isResolving();
   let peakY = 0;
   for (let i = 0; i < 100; i++) { await frame(); peakY = Math.max(peakY, p1Rack.balls[0].object3D.position.y); }
   out.switchArcPeakY = +peakY.toFixed(2);
@@ -356,14 +364,23 @@ async function run() {
   out.previewBackAfterSwitch = p1Ball.components["pokemon-preview"].card.object3D.visible;
   p1Ball.emit("raycaster-intersected-cleared", { el: cursor });
   out.p2StillOut = pokemonsOf("p2");
+  out.turnStillWaitingAfterFlight = !battle.isResolving();
+  actions.length = 0;
   await drop(p1Rack.balls[2], 0, 4);
   out.p1CanSendAnotherAfterSwitch = pokemonsOf("p1");
+  out.turnStartsWhenNewProfLands = battle.isResolving();
+  await until(() => !battle.isResolving(), 300);
+  out.switchTurnActions = actions.map((a) => `${a.player}:${a.kind}`);
+  const newProf = p1Rack.balls[2].components.pokeprof.prof;
+  out.newProfHitBySwitchTurn = newProf.hp < newProf.maxHp();
+  out.attackUnlockedAfterSwitchTurn = buttonLocked("attack");
   // Desmaio no turno: o adversário zera, volta para a bola (voa ao
   // suporte) e não pode ser jogado de novo até o reset.
   const foeProf = p2Ball.components.pokeprof;
   foeProf.damage(foeProf.prof.hp - 1);
   actions.length = 0;
   await press("attack");
+  out.attackDetailsNewProf = [...hud.querySelectorAll(".hud-option-detail")].map((t) => t.getAttribute("value"));
   await press("chamada-oral");
   battle.choose("p2", { kind: "attack", id: "prova-surpresa" });
   await until(() => foeProf.prof.isFainted(), 300);
@@ -389,6 +406,25 @@ async function run() {
   scene.emit("gamereset"); await frame();
   out.cardHpAfterReset = hpText();
   out.noCardsAfterReset = hud.querySelectorAll(".hud-field-card").length === 0;
+  out.ppRestoredAfterReset = p1Ball.components.pokeprof.prof.ppLeft({ id: "prova-surpresa", pp: 10 }) === 10;
+
+  // Fora da arena: bola na arquibancada ou além do fundo não abre e volta
+  // para o suporte.
+  const outBall = p1Rack.balls[0];
+  await drop(outBall, 8.3, 0); // degrau da arquibancada direita
+  out.outOfArenaNoPokemon = pokemonsOf("p1");
+  await until(() => outBall.hasAttribute("data-returning"), 120);
+  out.outOfArenaReturning = outBall.hasAttribute("data-returning");
+  await until(() => !outBall.hasAttribute("data-returning"), 120);
+  out.outOfArenaBackInSlotM = +outBall.object3D.position.distanceTo(p1Rack.slots[0]).toFixed(3);
+  await drop(outBall, 0, 10.6); // chão atrás da mureta do fundo
+  out.behindWallNoPokemon = pokemonsOf("p1");
+  await until(() => !outBall.hasAttribute("data-returning") && outBall.object3D.position.distanceTo(p1Rack.slots[0]) < 0.05, 200);
+  out.behindWallBackInSlotM = +outBall.object3D.position.distanceTo(p1Rack.slots[0]).toFixed(3);
+  // Dentro do campo continua abrindo.
+  await drop(outBall, 0, 4);
+  out.insideStillReleases = pokemonsOf("p1");
+  scene.emit("gamereset"); await frame();
 
   // Partida completa contra a CPU, até alguém perder todos os PokeProfs.
   for (let i = 0; i < 5; i++) await frame();
@@ -415,7 +451,9 @@ async function run() {
     cpuStates.add(cpuEl.dataset.cpuState);
     if (battle.canChoose("p1") && hud.dataset.page === "main") {
       await press("attack");
-      await press("reprovacao");
+      // Primeiro ataque ainda com PP.
+      const move = hudButtons().find((b) => b.dataset.locked === "false" && b.dataset.option !== "back");
+      if (move) { move.emit("click"); await frame(); }
       turns++;
     } else if (!battle.activeBall("p1") && !battle.isGameOver()) {
       const next = p1Rack.balls.find((b) => !b.components.pokeprof.prof.isFainted() && !b.hasAttribute("data-returning"));

@@ -153,7 +153,8 @@ AFRAME.registerComponent("cpu-player", {
     const me = this.player();
     const prof = battle.activeProf(me)?.prof;
     const choice = pickAction({
-      attacks: ATTACKS,
+      // Só ataques com PP.
+      attacks: prof ? ATTACKS.filter((move) => prof.hasPp(move)) : ATTACKS,
       powerups: POWERUPS,
       powerupChance: CPU.powerupChance,
       lastPowerupId: this.lastPowerupId,

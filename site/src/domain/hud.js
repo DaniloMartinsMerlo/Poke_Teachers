@@ -62,15 +62,19 @@ export function pullWithin1D(anchor, target, slack) {
 }
 
 /**
- * Linha de detalhe de uma opção do HUD: poder do ataque (com o dano
- * estimado contra o adversário em campo, se houver) ou o efeito do
- * power-up. "" para as demais.
- * @param {{power?: number, effect?: string, short?: string, percent?: number}} option
+ * Linha de detalhe de uma opção do HUD: poder do ataque (ou o dano
+ * estimado contra o adversário em campo, se houver), precisão e PP; ou o
+ * efeito do power-up. "" para as demais. Cabe em ~30 caracteres.
+ * @param {{power?: number, accuracy?: number, pp?: number, effect?: string, short?: string, percent?: number}} option
  * @param {number | null} [estimate] dano estimado
+ * @param {number | null} [ppLeft] PP restante (sem valor: o total)
  */
-export function optionDetail(option, estimate = null) {
+export function optionDetail(option, estimate = null, ppLeft = null) {
   if (typeof option.power === "number") {
-    return estimate == null ? `Poder ${option.power}` : `Poder ${option.power} (~${estimate} dano)`;
+    const parts = [estimate == null ? `Poder ${option.power}` : `~${estimate} dano`];
+    if (typeof option.accuracy === "number") parts.push(`${option.accuracy}%`);
+    if (typeof option.pp === "number") parts.push(`PP ${ppLeft ?? option.pp}/${option.pp}`);
+    return parts.join(" | ");
   }
   if (option.effect === "heal") {
     return `Cura ${option.percent}% HP`;
@@ -101,6 +105,12 @@ function powerupEffect(detail) {
  * desmaio), ou null.
  */
 export function calloutTexts(detail) {
+  if (detail.kind === "switch") {
+    return { actor: `Vai, ${detail.actorName}!`, target: null, note: "" };
+  }
+  if (detail.kind === "attack" && detail.missed) {
+    return { actor: `${detail.label}!`, target: "Errou!", note: "" };
+  }
   if (detail.kind === "attack") {
     const notes = [effectivenessNote(detail.multiplier), detail.fainted ? "Desmaiou!" : ""].filter(Boolean);
     return { actor: `${detail.label}!`, target: `-${detail.damage} HP`, note: notes.join(" ") };
@@ -114,6 +124,12 @@ export function calloutTexts(detail) {
  */
 export function logLine(detail, owner) {
   const who = `${owner} ${detail.actorName}`;
+  if (detail.kind === "switch") {
+    return `${owner} trocou: ${detail.actorName} entrou`;
+  }
+  if (detail.kind === "attack" && detail.missed) {
+    return `${who}: ${detail.label} errou!`;
+  }
   if (detail.kind === "attack") {
     const note = detail.multiplier > 1 ? " (super)" : detail.multiplier < 1 ? " (fraco)" : "";
     return `${who}: ${detail.label} -${detail.damage}${note}`;

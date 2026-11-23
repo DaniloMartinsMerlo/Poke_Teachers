@@ -77,11 +77,15 @@ export function pickProf(candidates, random = Math.random) {
 /**
  * Sorteia a ação: power-up com chance `powerupChance`, senão ataque.
  * Nunca repete o último power-up usado (`lastPowerupId`) e não cura com a
- * vida cheia.
+ * vida cheia. `attacks` deve ter só os ataques com PP; sem nenhum, usa um
+ * power-up (se nenhum passar nos filtros, qualquer um).
  * @returns {{kind: string, id: string}}
  */
 export function pickAction({ attacks, powerups, powerupChance, lastPowerupId = null, hpFull = false, random = Math.random }) {
   const usable = powerups.filter((item) => item.id !== lastPowerupId && !(item.effect === "heal" && hpFull));
+  if (!attacks.length) {
+    return { kind: ACTION_KINDS.POWERUP, id: pick(usable.length ? usable : powerups, random).id };
+  }
   if (usable.length && random() < powerupChance) {
     return { kind: ACTION_KINDS.POWERUP, id: pick(usable, random).id };
   }

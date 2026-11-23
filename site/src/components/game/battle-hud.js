@@ -391,7 +391,7 @@ AFRAME.registerComponent("battle-hud", {
       width, height,
       material: `color: ${idleColor}; shader: flat`,
     });
-    const detail = optionDetail(option, this.estimateDamage(option));
+    const detail = optionDetail(option, this.estimateDamage(option), this.ppLeft(option));
     const label = createEntity("a-text", {
       value: option.label, align: "center", color: HUD_COLORS.text,
       "wrap-count": 18, width: HUD_BUTTON.width,
@@ -438,6 +438,14 @@ AFRAME.registerComponent("battle-hud", {
     return text;
   },
 
+  // PP restante do ataque para o PokeProf do jogador em campo (ou null).
+  ppLeft(option) {
+    if (typeof option.pp !== "number") {
+      return null;
+    }
+    return this.el.sceneEl.systems.battle?.ppLeft(this.data.player, option.id) ?? null;
+  },
+
   // Dano estimado do ataque contra o PokeProf do adversário em campo
   // (atributos e power-ups de agora), ou null.
   estimateDamage(option) {
@@ -454,8 +462,9 @@ AFRAME.registerComponent("battle-hud", {
   },
 
   // Botão travado pelo turno? Ataques e power-ups (e os botões que abrem
-  // as páginas deles) depois de escolher, durante a resolução e no fim de
-  // jogo; Trocar só durante a resolução e no fim de jogo.
+  // as páginas deles) depois de escolher (inclusive trocar), durante a
+  // resolução e no fim de jogo; ataque sem PP sempre. Trocar só durante a
+  // resolução e no fim de jogo (trocar depois de escolher troca a escolha).
   isLocked(option) {
     const battle = this.el.sceneEl.systems.battle;
     if (!battle) {
@@ -464,7 +473,7 @@ AFRAME.registerComponent("battle-hud", {
     const busy = battle.isResolving() || battle.isGameOver();
     const onTurnPage = this.page === HUD_PAGES.ATTACK || this.page === HUD_PAGES.POWERUP;
     if (TURN_ACTIONS.has(option.action) || (onTurnPage && option.id)) {
-      return busy || battle.hasChosen(this.data.player);
+      return busy || battle.hasChosen(this.data.player) || this.ppLeft(option) === 0;
     }
     return option.action === HUD_ACTIONS.SWITCH && busy;
   },
@@ -523,22 +532,25 @@ AFRAME.registerComponent("battle-hud", {
           this.setStatus("Nenhum PokeProf em campo");
           return;
         }
-        this.setStatus(`Volte, ${activeName}!`);
+        // Com o turno aberto, a troca é a ação do turno.
+        this.setStatus(this.el.sceneEl.systems.battle.isTurnOpen()
+          ? `Volte, ${activeName}! (gasta o turno)`
+          : `Volte, ${activeName}!`);
         return;
       case HUD_ACTIONS.ATTACK:
       case HUD_ACTIONS.POWERUP: {
         const battle = this.el.sceneEl.systems.battle;
         const opponent = battle.opponentOf(this.data.player);
-        if (!activeBall) {
+        if (battle.canChoose(this.data.player)) {
+          // Se o adversário já escolheu, o turno começa na hora e troca
+          // este texto por "Resolvendo".
+          this.setStatus(HUD_TEXTS.waiting, true);
+        } else if (!activeBall) {
           this.setStatus("Nenhum PokeProf em campo");
         } else if (activeBall.components.pokeprof?.prof.isFainted()) {
           this.setStatus(`${activeName} esta desmaiado`);
         } else if (!battle.activeBall(opponent) || battle.activeProf(opponent).prof.isFainted()) {
           this.setStatus("Aguarde o adversario lancar um PokeProf");
-        } else if (battle.canChoose(this.data.player)) {
-          // Se o adversário já escolheu, o turno começa na hora e troca
-          // este texto por "Resolvendo".
-          this.setStatus(HUD_TEXTS.waiting, true);
         }
         return;
       }

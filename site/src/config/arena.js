@@ -34,6 +34,14 @@ export const WALL = Object.freeze({
   trimHeight: 0.05,
 });
 
+// Limite da arena para as pokébolas: o lado de dentro das muretas. Bola
+// solta além disto (arquibancada, em cima da mureta, fora do estádio) não
+// solta o PokeProf e volta voando para o suporte (ver ball-rack).
+export const ARENA_BOUNDS = Object.freeze({
+  halfWidth: WALL.innerHalfWidth,
+  halfLength: WALL.innerHalfLength,
+});
+
 export const BLEACHERS = Object.freeze({
   firstStepX: 7.8,
   stepWidth: 0.9,

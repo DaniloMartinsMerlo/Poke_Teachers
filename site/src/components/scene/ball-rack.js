@@ -1,15 +1,15 @@
-import { TRAINER_BOX_Z } from "../../config/arena.js";
+import { ARENA_BOUNDS, TRAINER_BOX_Z } from "../../config/arena.js";
 import {
   EVENTS, GRABBABLE_CLASS, GRABBABLE_SELECTOR, HELD_ATTRIBUTE, MAX_FRAME_MS, RETURNING_ATTRIBUTE,
 } from "../../config/constants.js";
 import {
-  BLOCKED_RETURN_DELAY, RETURN_ARC_HEIGHT, RETURN_DURATION, RETURN_SPINS,
+  BLOCKED_RETURN_DELAY, OUT_OF_ARENA_RETURN_DELAY, RETURN_ARC_HEIGHT, RETURN_DURATION, RETURN_SPINS,
   SLOT_OCCUPIED_DISTANCE, SLOT_SNAP_DISTANCE,
 } from "../../config/grab.js";
 import { playerInfo } from "../../config/players.js";
 import { FAINT_RECALL_DELAY } from "../../config/battle.js";
 import { RECALL_DURATION } from "../../config/pokemon.js";
-import { arcPoint, returnSlot } from "../../domain/battle.js";
+import { arcPoint, isOutsideArena, returnSlot } from "../../domain/battle.js";
 import { findNearest } from "../../domain/nearest.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
 
@@ -35,6 +35,9 @@ const SLOT_ACTIVE_COLOR = "#ffd23f";
 // voando em arco até um encaixe livre. Quando o PokeProf em campo desmaia
 // (POKEPROF_FAINTED), depois de FAINT_RECALL_DELAY ele é recolhido do
 // mesmo jeito que na troca.
+//
+// Fora da arena: bola solta além das muretas (arquibancada, fora do
+// estádio) por OUT_OF_ARENA_RETURN_DELAY volta voando para o suporte.
 AFRAME.registerComponent("ball-rack", {
   schema: {
     player: { default: "p1" },
@@ -56,6 +59,8 @@ AFRAME.registerComponent("ball-rack", {
     this.flights = [];
     // Desmaiados esperando para voltar: { ball, wait }.
     this.faintRecalls = [];
+    // Bolas soltas fora da arena: bola → ms fora.
+    this.outside = new Map();
     this.buildStand();
     this.markers = this.buildSlotMarkers();
     const sceneEl = this.el.sceneEl;
@@ -73,6 +78,7 @@ AFRAME.registerComponent("ball-rack", {
     };
     this.onGameReset = () => {
       this.faintRecalls = [];
+      this.outside.clear();
       this.finishFlights();
     };
     sceneEl.addEventListener(EVENTS.POKEPROF_FAINTED, this.onFainted);
@@ -246,6 +252,27 @@ AFRAME.registerComponent("ball-rack", {
     flight.ball.components["physics-body"].placeAt(flight.slot);
   },
 
+  // Bola solta fora da arena há OUT_OF_ARENA_RETURN_DELAY: volta para o
+  // suporte. Segurada, voando de volta ou com o PokeProf fora não conta.
+  checkOutOfArena(delta) {
+    this.balls.forEach((ball) => {
+      const free = !ball.hasAttribute(HELD_ATTRIBUTE)
+        && !ball.hasAttribute(RETURNING_ATTRIBUTE)
+        && !ball.components["pokemon-release"]?.creature;
+      if (!free || !isOutsideArena(ball.object3D.position, ARENA_BOUNDS)) {
+        this.outside.delete(ball);
+        return;
+      }
+      const time = (this.outside.get(ball) || 0) + delta;
+      if (time < OUT_OF_ARENA_RETURN_DELAY) {
+        this.outside.set(ball, time);
+        return;
+      }
+      this.outside.delete(ball);
+      this.sendHome(ball);
+    });
+  },
+
   // Reset no meio do voo: a física já devolveu as bolas ao início.
   finishFlights() {
     this.flights.forEach((flight) => flight.ball.removeAttribute(RETURNING_ATTRIBUTE));
@@ -274,6 +301,7 @@ AFRAME.registerComponent("ball-rack", {
     if (this.flights.length) {
       this.advanceFlights(Math.min(delta || 0, MAX_FRAME_MS));
     }
+    this.checkOutOfArena(Math.min(delta || 0, MAX_FRAME_MS));
     const held = this.el.sceneEl.querySelectorAll(`${GRABBABLE_SELECTOR}[${HELD_ATTRIBUTE}]`);
     const targets = new Set([...held].map((ball) => this.freeSlotNear(ball)).filter(Boolean));
     this.flights.forEach((flight) => targets.add(flight.slot));

@@ -6,7 +6,8 @@ import { createEntity, vec3 } from "../../utils/entity.js";
 
 // Balões de batalha no campo: a cada ação do turno (TURN_ACTION), o nome
 // do golpe/power-up aparece sobre o PokeProf que agiu (faixa na cor do
-// dono) e o dano sobre quem levou, com "Super efetivo!"/"Desmaiou!".
+// dono) e o dano sobre quem levou, com "Super efetivo!"/"Desmaiou!" (ou
+// "Errou!", em branco). Quem entrou trocando ganha "Vai, Nome!".
 // Sobem e somem em FIELD_CALLOUT.duration; sempre virados para a câmera e
 // maiores quanto mais longe (para ler o do outro lado do campo).
 // Uma entidade na cena basta: <a-entity battle-callouts>.
@@ -34,7 +35,7 @@ AFRAME.registerComponent("battle-callouts", {
     ]);
     if (texts.target) {
       this.spawn(detail.target, [
-        { value: texts.target, color: FIELD_CALLOUT.damageColor },
+        { value: texts.target, color: detail.missed ? FIELD_CALLOUT.missColor : FIELD_CALLOUT.damageColor },
         ...(texts.note ? [{ value: texts.note, color: FIELD_CALLOUT.noteColor, small: true }] : []),
       ]);
     }

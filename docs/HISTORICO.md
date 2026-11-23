@@ -413,3 +413,55 @@ professores.
   prox. turno" (cabe na coluna de ~26 caracteres).
 - Motivo: o usuário achou as ações do turno escondidas na linha amarela
   embaixo do HUD.
+
+## 2026-11-23 — validação no Quest 3, precisão e PP, troca gasta o turno, bola fora da arena
+
+### Validação no Quest 3 (usuário)
+- Ok: bola segurada desliza rente; partida contra a CPU legível; balões,
+  registro e HUD legíveis; pinça; colisões na arquibancada (não abre);
+  carretilha reta (bola defasada ao passar o laser pelo chão: aceito).
+- Novos itens no A_FAZER: balões que se sobrepõem, texto de efetividade
+  apagado, prévia e gesto de reset com as mãos.
+
+### Mudanças
+- **Precisão e PP** (`ATTACKS` em `config/battle.js`): Chamada Oral 30 /
+  100% / 15 PP, Prova Surpresa 40 / 90% / 10, Trabalho em Grupo 50 / 80% /
+  8, Reprovar 60 / 65% / 5. `performAction` gasta 1 PP e sorteia o acerto
+  (`rollHit`, `random` injetável); errou = `missed`, sem dano. PP contado
+  por PokeProf (`Pokeprof.ppLeft/spendPp/restorePp`); o reset devolve.
+  Ataque sem PP: botão travado e `battle.choose` recusa; a CPU só sorteia
+  ataques com PP (sem nenhum, usa power-up).
+- HUD: detalhe do botão virou "~33 dano | 65% | PP 5/5" (sem adversário
+  em campo: "Poder 60 | 65% | PP 5/5"). Balão "Errou!" em branco; registro
+  "J2 Rodinha: Reprovar errou!".
+- **Trocar gasta o turno:** recolher um PokeProf de pé com o turno aberto
+  (botão Trocar ou pegando a bola do campo) vira a escolha `switch`,
+  substituindo outra já feita. O adversário pode escolher enquanto isso
+  (`canChoose` aceita adversário "trocando"), mas o turno só começa quando
+  o novo PokeProf pousa (`maybeStartTurn` no `POKEMON_RELEASED`). A troca
+  vai primeiro no turno; o ataque do adversário acerta quem entrou. Balão
+  "Vai, X!", registro "J1 trocou: X entrou", status "Volte, X! (gasta o
+  turno)".
+- **Bola fora da arena** (`ARENA_BOUNDS` = lado de dentro das muretas,
+  `isOutsideArena` em `domain/battle.js`): solta fora por 0,8 s
+  (`OUT_OF_ARENA_RETURN_DELAY`) volta voando ao suporte do dono
+  (`ball-rack.checkOutOfArena`); fora da arena o PokeProf não sai, nem no
+  chão atrás da mureta (antes saía).
+
+### Decisões e motivos
+- **Valores de precisão/PP** são os sugeridos no A_FAZER (usuário não
+  mudou). Teste garante "mais poder → precisão e PP menores ou iguais".
+- **PP gasto ao executar**, não ao escolher: se o PokeProf desmaia antes
+  de agir, ou o alvo já caiu, não perde PP (como no Pokémon). Errar gasta.
+- **Troca livre fora do turno aberto:** repor um desmaiado ou lançar
+  enquanto o adversário não tem ninguém em campo não é "trocar".
+- **Pegar a bola do campo também conta como troca**, para não haver um
+  jeito de trocar de graça.
+- Bola fora da arena: espera de 0,8 s para ver a bola bater na
+  arquibancada antes de voltar; segurada, voando ou com PokeProf fora não
+  conta (laser alcança 15 m).
+- Testes de turno passam um `random` fixo (`HIT`/`MISS`): com a precisão,
+  `Math.random` deixaria os testes instáveis.
+
+### Pendências
+- Validar no Quest 3 (lista no A_FAZER).

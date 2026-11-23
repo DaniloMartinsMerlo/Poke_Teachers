@@ -7,7 +7,7 @@ import { PLAYER_IDS } from "../config/players.js";
 import { TYPE_BEATS } from "../config/teachers.js";
 import { canSendOut } from "../domain/battle.js";
 import {
-  ACTION_KINDS, TurnChoices, finishTurn, isTeamDefeated, performAction, planTurn,
+  ACTION_KINDS, SWITCH_CHOICE, TurnChoices, finishTurn, isTeamDefeated, performAction, planTurn,
 } from "../domain/turn.js";
 
 const TURN_RULES = Object.freeze({
@@ -24,8 +24,14 @@ const TURN_RULES = Object.freeze({
 // pé, cada jogador escolhe uma ação — HUD_ACTION (pessoa) ou `choose()`
 // (CPU). Com as duas escolhas o turno resolve aos poucos (TURN_START_DELAY
 // e TURN_STEP_DELAY entre as ações, contados nos ticks): o mais rápido age
-// primeiro; cada ação vira TURN_ACTION. Trocar/recolher o PokeProf apaga a
-// escolha daquele jogador.
+// primeiro; cada ação vira TURN_ACTION. Ataque sem PP é recusado.
+//
+// Trocar gasta o turno: recolher um PokeProf de pé com o turno aberto
+// (botão "Trocar" ou pegando a bola do campo) vira a escolha "switch" do
+// jogador, no lugar de qualquer outra. O adversário pode escolher
+// enquanto isso, mas o turno só resolve quando o novo PokeProf chega ao
+// campo — o ataque do adversário acerta o que entrou. Fora de um turno
+// aberto (adversário sem PokeProf, desmaio, resolução) a troca é livre.
 //
 // Fim de jogo: quando todos os PokeProfs de um jogador desmaiam, depois
 // de GAME_OVER_DELAY emite GAME_OVER. "Jogar de novo" no HUD reseta tudo
@@ -42,15 +48,23 @@ AFRAME.registerSystem("battle", {
 
     this.onReleased = ({ detail }) => {
       this.active[detail.player] = detail.ball;
-      this.choices.clear(detail.player);
+      // A troca escolhida continua valendo: é a ação deste turno.
+      if (this.choices.get(detail.player)?.kind !== ACTION_KINDS.SWITCH) {
+        this.choices.clear(detail.player);
+      }
       this.changed();
+      this.maybeStartTurn();
     };
     this.onRecalled = ({ detail }) => {
       if (this.active[detail.player] === detail.ball) {
+        const switching = this.isTurnOpen();
         delete this.active[detail.player];
         detail.ball.components.pokeprof?.prof.clearBoosts();
         this.choices.clear(detail.player);
-        this.changed();
+        if (switching) {
+          this.choices.choose(detail.player, SWITCH_CHOICE);
+        }
+        this.changed(switching ? detail.player : null);
       }
     };
     this.onHudAction = ({ detail }) => {
@@ -123,9 +137,38 @@ AFRAME.registerSystem("battle", {
     });
   },
 
-  /** O turno aceita a escolha deste jogador agora? */
+  /** Há um turno aberto? (os dois em campo, de pé, sem resolução nem fim) */
+  isTurnOpen() {
+    return !this.result && !this.resolving && this.bothOnField();
+  },
+
+  /** O jogador recolheu o PokeProf e o substituto ainda não chegou? */
+  isSwitching(player) {
+    return this.choices.get(player)?.kind === ACTION_KINDS.SWITCH;
+  },
+
+  /**
+   * O turno aceita a escolha deste jogador agora? O PokeProf dele está em
+   * campo e de pé, e o do adversário também — ou o adversário está
+   * trocando (a escolha espera o novo PokeProf chegar).
+   */
   canChoose(player) {
-    return !this.result && !this.resolving && !this.choices.has(player) && this.bothOnField();
+    if (this.result || this.resolving || this.choices.has(player)) {
+      return false;
+    }
+    const alive = (id) => {
+      const prof = this.activeProf(id)?.prof;
+      return Boolean(prof && !prof.isFainted());
+    };
+    const opponent = this.opponentOf(player);
+    return alive(player) && (alive(opponent) || this.isSwitching(opponent));
+  },
+
+  /** PP restante do ataque `attackId` do PokeProf em campo (ou null). */
+  ppLeft(player, attackId) {
+    const prof = this.activeProf(player)?.prof;
+    const move = ATTACKS.find((item) => item.id === attackId);
+    return prof && move ? prof.ppLeft(move) : null;
   },
 
   /**
@@ -134,16 +177,26 @@ AFRAME.registerSystem("battle", {
    * @param {{kind: string, id: string}} choice ACTION_KINDS + id do ataque/power-up
    */
   choose(player, choice) {
-    const list = choice.kind === ACTION_KINDS.ATTACK ? ATTACKS : POWERUPS;
+    const list = choice.kind === ACTION_KINDS.ATTACK ? ATTACKS
+      : choice.kind === ACTION_KINDS.POWERUP ? POWERUPS : [];
     if (!this.canChoose(player) || !list.some((item) => item.id === choice.id)) {
+      return false;
+    }
+    if (choice.kind === ACTION_KINDS.ATTACK && this.ppLeft(player, choice.id) === 0) {
       return false;
     }
     this.choices.choose(player, choice);
     this.changed(player);
-    if (this.choices.isReady(PLAYER_IDS)) {
+    this.maybeStartTurn();
+    return true;
+  },
+
+  // Começa o turno quando os dois escolheram e estão em campo (quem trocou
+  // precisa ter lançado o novo PokeProf).
+  maybeStartTurn() {
+    if (!this.resolving && !this.result && this.choices.isReady(PLAYER_IDS) && this.bothOnField()) {
       this.startTurn();
     }
-    return true;
   },
 
   startTurn() {

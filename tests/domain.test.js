@@ -1,8 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { resolveCircleAgainstRects, overlapsHeight } from "../site/src/domain/collision.js";
 import { findNearest } from "../site/src/domain/nearest.js";
 import { reelAlongRay, reelDistance, thumbstickReel } from "../site/src/domain/reel.js";
+
+test("deploy usa o nome de artefato padrão do GitHub Pages", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/deploy-pages.yml", import.meta.url), "utf8");
+  assert.doesNotMatch(workflow, /github-pages-\$\{\{\s*github\.run_attempt\s*\}\}/);
+  assert.doesNotMatch(workflow, /artifact_name\s*:/);
+});
 
 // Mureta direita da arena: lado de dentro em x = 7.
 const rightWall = { minX: 7, maxX: 7.3, minY: 0, maxY: 0.8, minZ: -10.3, maxZ: 10.3 };

@@ -130,13 +130,6 @@ Fim de partida: "Jogar de novo" (mesma sala, mesmos jogadores) e
   andar só com as mãos: pensar em um gesto para isso. Pedido depois de
   validar a pinça no Quest 3.
 - [ ] Trocar os pokémons de primitivas por modelos `.glb` (Blender).
-## Validar no navegador do PC
-
-- [ ] Mouse: clicar na bola pega (ela vem para a frente da câmera); clique
-  em qualquer lugar arremessa na direção do ponteiro; arrastar gira a
-  câmera sem arremessar; rodinha aproxima/afasta. Botões do menu e do HUD
-  com o mouse. WASD anda, Espaço/Shift sobem/descem, R reseta.
-
 ## Validar no Quest 3
 
 - [ ] Tela inicial: tamanho e distância (1,4 m) confortáveis? Pinça e
@@ -188,3 +181,8 @@ Detalhes de cada uma em `docs/HISTORICO.md`.
   pelo chão: aceito, sem correção).
 - [x] Tela inicial aparece à frente, na altura dos olhos, ao entrar no VR
   (antes ficava abaixo do chão).
+
+### Validadas no navegador do PC
+
+- [x] Mouse e teclado: pegar e arremessar a pokébola, botões do menu e do
+  HUD.

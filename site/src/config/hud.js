@@ -62,6 +62,8 @@ export const HUD_ACTIONS = Object.freeze({
   GIVE_UP: "giveup",
   BACK: "back",
   PLAY_AGAIN: "playagain",
+  // Fim de jogo: volta para a tela inicial (sistema "game-flow").
+  MENU: "menu",
 });
 
 export const MAIN_OPTIONS = Object.freeze([
@@ -73,6 +75,7 @@ export const MAIN_OPTIONS = Object.freeze([
 
 export const GAME_OVER_OPTIONS = Object.freeze([
   { action: HUD_ACTIONS.PLAY_AGAIN, label: "Jogar de novo" },
+  { action: HUD_ACTIONS.MENU, label: "Menu" },
 ]);
 
 export const HUD_TEXTS = Object.freeze({

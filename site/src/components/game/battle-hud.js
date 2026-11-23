@@ -35,6 +35,7 @@ import { angleBetween, approachAngle } from "../../domain/battle.js";
 import { chooseHudOption, logLine, optionDetail, pullWithin, pullWithin1D } from "../../domain/hud.js";
 import { frameSeconds } from "../../utils/time.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
+import { buttonAtPoint, pinchWorldPoint } from "../../utils/pinch.js";
 import { PokeprofCard } from "./pokeprof-card.js";
 
 const PAGE_TITLES = Object.freeze({
@@ -72,6 +73,9 @@ const BACK_OPTION = Object.freeze({ action: HUD_ACTIONS.BACK, label: "Voltar" })
 // PokeProf do jogador em campo: o cartão dele (foto, vida, atributos) fica
 // logo acima do painel e acompanha a vida ao vivo; some ao recolher.
 //
+// Tela inicial (sistema "game-flow" no menu): o HUD some e fica sem
+// botões. Fim de jogo: "Jogar de novo" e "Menu".
+//
 // Deve ficar dentro do rig do jogador no HTML.
 AFRAME.registerComponent("battle-hud", {
   schema: {
@@ -93,11 +97,19 @@ AFRAME.registerComponent("battle-hud", {
     this.head = new THREE.Vector3();
     this.forward = new THREE.Vector3();
     this.eye = new THREE.Vector3();
-    this.local = new THREE.Vector3();
     this.rigQuaternion = new THREE.Quaternion();
 
+    this.hidden = this.el.sceneEl.systems["game-flow"]?.isMenu() ?? false;
+    this.el.object3D.visible = !this.hidden;
     this.build();
     this.showPage(HUD_PAGES.MAIN);
+    this.onModeChanged = () => {
+      this.hidden = this.el.sceneEl.systems["game-flow"].isMenu();
+      this.el.object3D.visible = !this.hidden;
+      this.anchor = null;
+      this.showPage(HUD_PAGES.MAIN);
+    };
+    this.el.sceneEl.addEventListener(EVENTS.GAME_MODE_CHANGED, this.onModeChanged);
 
     this.onBlocked = ({ detail }) => {
       if (detail.player !== this.data.player) {
@@ -335,6 +347,11 @@ AFRAME.registerComponent("battle-hud", {
       this.list.removeChild(this.list.firstChild);
     }
     const options = this.optionsOf(page);
+    // Escondido (menu): sem botões, para nenhum raio ou pinça acertá-los.
+    if (this.hidden) {
+      this.buttons = [];
+      return;
+    }
     if (page === HUD_PAGES.GAME_OVER) {
       this.layout(2);
       this.list.appendChild(this.buildResultText());
@@ -363,12 +380,12 @@ AFRAME.registerComponent("battle-hud", {
 
   // Posição e largura do botão `index` na página. Grade 2x2: índices 0–3
   // nas duas primeiras linhas; o 5º ("Voltar") ocupa a linha de baixo
-  // inteira. No fim de jogo, o único botão ocupa a 2ª linha inteira.
+  // inteira. No fim de jogo, os botões ficam lado a lado na 2ª linha.
   slotOf(page, index) {
     const { width, height, gap } = HUD_BUTTON;
     const full = 2 * width + gap;
     if (page === HUD_PAGES.GAME_OVER) {
-      return { x: 0, y: -(height + gap), width: full };
+      return { x: (index - 0.5) * (width + gap), y: -(height + gap), width };
     }
     if (index < 4) {
       return { x: ((index % 2) - 0.5) * (width + gap), y: -Math.floor(index / 2) * (height + gap), width };
@@ -412,7 +429,7 @@ AFRAME.registerComponent("battle-hud", {
     plane.addEventListener("click", () => this.choose(option));
     this.list.appendChild(plane);
     this.list.appendChild(label);
-    return { plane, option, width };
+    return { plane, option, width, height };
   },
 
   // Linha de baixo do botão: ataque = "Poder 60 (~32 dano)"; power-up =
@@ -498,7 +515,7 @@ AFRAME.registerComponent("battle-hud", {
   },
 
   choose(option) {
-    if (this.isLocked(option)) {
+    if (this.hidden || this.isLocked(option)) {
       return;
     }
     const { page, emit } = chooseHudOption(this.page, option);
@@ -568,25 +585,10 @@ AFRAME.registerComponent("battle-hud", {
     }
   },
 
-  // Mão rastreada: pinça (posição no espaço do rig) encostada num botão.
+  // Mão rastreada: pinça encostada num botão.
   pressAtPinch(event) {
-    const hand = event.currentTarget || event.target;
-    if (!event.detail || !event.detail.position || !hand) {
-      return;
-    }
-    hand.object3D.updateMatrixWorld();
-    const point = new THREE.Vector3().copy(event.detail.position).applyMatrix4(hand.object3D.matrixWorld);
-    const { height } = HUD_BUTTON;
-    const hit = this.buttons.find(({ plane, width, option }) => {
-      if (this.isLocked(option)) {
-        return false;
-      }
-      plane.object3D.updateMatrixWorld();
-      plane.object3D.worldToLocal(this.local.copy(point));
-      return Math.abs(this.local.x) <= width / 2 + HUD_PINCH_REACH / 2
-        && Math.abs(this.local.y) <= height / 2
-        && Math.abs(this.local.z) <= HUD_PINCH_REACH;
-    });
+    const point = pinchWorldPoint(event);
+    const hit = point && buttonAtPoint(point, this.buttons, HUD_PINCH_REACH, ({ option }) => this.isLocked(option));
     if (hit) {
       this.choose(hit.option);
     }
@@ -648,6 +650,7 @@ AFRAME.registerComponent("battle-hud", {
 
   remove() {
     clearTimeout(this.statusTimer);
+    this.el.sceneEl.removeEventListener(EVENTS.GAME_MODE_CHANGED, this.onModeChanged);
     this.el.sceneEl.removeEventListener(EVENTS.SEND_OUT_BLOCKED, this.onBlocked);
     this.sceneEvents.forEach(([name, handler]) => this.el.sceneEl.removeEventListener(name, handler));
     this.el.sceneEl.removeEventListener(EVENTS.POKEMON_RELEASED, this.onSentOut);

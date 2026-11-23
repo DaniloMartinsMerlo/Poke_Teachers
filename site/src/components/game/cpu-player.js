@@ -1,5 +1,6 @@
 import { ATTACKS, CPU, POWERUPS } from "../../config/battle.js";
 import { EVENTS, HELD_ATTRIBUTE, MAX_FRAME_MS, NO_GRAB_ATTRIBUTE, RETURNING_ATTRIBUTE } from "../../config/constants.js";
+import { OPPONENTS } from "../../config/menu.js";
 import { GRAVITY } from "../../config/physics.js";
 import { ACTION_KINDS } from "../../domain/turn.js";
 import {
@@ -92,7 +93,9 @@ AFRAME.registerComponent("cpu-player", {
 
   tick(time, delta) {
     const rack = this.rack();
-    if (!this.data.enabled || !rack || !rack.balls.length) {
+    const flow = this.el.sceneEl.systems["game-flow"];
+    // Só joga numa partida contra a CPU (não no menu).
+    if (!this.data.enabled || !rack || !rack.balls.length || !flow?.isPlayingAgainst(OPPONENTS.CPU)) {
       return;
     }
     this.lockBalls();

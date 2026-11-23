@@ -152,6 +152,16 @@ O WebXR só funciona em HTTPS. O Caddy gera um certificado com uma autoridade ce
 
 Quando o jogador alterna entre as mãos e os controles, o jogo detecta a mudança sozinho.
 
+### Tela inicial
+
+O jogo abre com um painel à sua frente:
+
+- **J1 x COMP**: começa a partida contra o computador.
+- **J1 x J2**: partida online entre dois headsets, com código de sala (em breve).
+- **Creditos**.
+
+Aponte (laser ou mouse) e clique, ou encoste a pinça no botão. No fim da partida, **Menu** volta para esta tela.
+
 ### Como funciona a batalha
 
 - Você joga contra o computador (CPU), que fica do outro lado do campo. A CPU espera você lançar o primeiro PokeProf e então arremessa um dos dela.

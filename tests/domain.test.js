@@ -135,6 +135,8 @@ test("HUD: navegação entre páginas e ações anunciadas", () => {
     { page: "main", emit: { action: "powerup", id: "feriado" } });
   assert.deepEqual(chooseHudOption("gameover", { action: "playagain" }),
     { page: "main", emit: { action: "playagain" } });
+  assert.deepEqual(chooseHudOption("gameover", { action: "menu" }),
+    { page: "main", emit: { action: "menu" } });
   assert.deepEqual(chooseHudOption("gameover", { action: "attack" }), { page: "gameover", emit: null });
 });
 
@@ -557,4 +559,31 @@ test("bola segurada: segmento prolongado pelo raio", () => {
   const e = extendSegment({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, 0.1);
   assert.ok(Math.abs(e.x - 1.1) < 1e-9);
   assert.deepEqual(extendSegment({ x: 1, y: 1, z: 1 }, { x: 1, y: 1, z: 1 }, 0.1), { x: 1, y: 1, z: 1 });
+});
+
+// ------------------------------------------------------- tela inicial
+import { chooseMenuOption, panelPlacement, stackPositions } from "../site/src/domain/menu.js";
+import { MENU_OPTIONS } from "../site/src/config/menu.js";
+
+test("menu: J1 x COMP abre a partida; J1 x J2 e créditos trocam de tela; Voltar volta", () => {
+  const go = (screen, action, extra = {}) => chooseMenuOption(screen, { action, ...extra });
+  assert.deepEqual(go("home", "vs-cpu"), { screen: "home", start: "cpu", notice: null });
+  assert.equal(go("home", "vs-player").screen, "versus");
+  assert.equal(go("home", "credits").screen, "credits");
+  assert.equal(go("credits", "back").screen, "home");
+  assert.equal(go("versus", "back").screen, "home");
+  // Salas online ainda não existem: só o aviso.
+  assert.deepEqual(go("versus", "create-room", { soon: true }), { screen: "versus", start: null, notice: "soon" });
+  assert.ok(MENU_OPTIONS.versus.filter((o) => o.action !== "back").every((o) => o.soon));
+  assert.deepEqual(MENU_OPTIONS.home.map((o) => o.action), ["vs-cpu", "vs-player", "credits"]);
+});
+
+test("menu: painel à frente da cabeça e botões empilhados de cima para baixo", () => {
+  const p = panelPlacement({ x: 0, y: 1.6, z: 7 }, 0, 1.4, 0.15);
+  assert.ok(Math.abs(p.z - 5.6) < 1e-9 && p.x === 0 && Math.abs(p.y - 1.45) < 1e-9);
+  const left = panelPlacement({ x: 0, y: 1.6, z: 0 }, Math.PI / 2, 1, 0);
+  assert.ok(Math.abs(left.x + 1) < 1e-9 && Math.abs(left.z) < 1e-9);
+  const ys = stackPositions(3, 0.1, 0.03);
+  assert.ok(ys[0] > ys[1] && ys[1] > ys[2]);
+  assert.ok(Math.abs(ys[1]) < 1e-9 && Math.abs(ys[0] - ys[1] - 0.13) < 1e-9);
 });

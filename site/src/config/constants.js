@@ -67,6 +67,8 @@ export const EVENTS = Object.freeze({
   TURN_RESOLVED: "turnresolved",
   // Alguém perdeu todos os PokeProfs (detail: winner, loser).
   GAME_OVER: "gameover",
+  // Menu ↔ partida (sistema "game-flow"; detail: mode, opponent).
+  GAME_MODE_CHANGED: "gamemodechanged",
 });
 
 // Quadros muito longos (aba em segundo plano) não podem gerar saltos.

@@ -33,9 +33,11 @@ export function moveAlongHoldLine(object3D, distance) {
   position.setLength(distance);
 }
 
-// Bolas da CPU (NO_GRAB_ATTRIBUTE) não podem ser pegas por pessoas.
+// Bolas da CPU (NO_GRAB_ATTRIBUTE) não podem ser pegas por pessoas. Na
+// tela inicial (sistema "game-flow") nenhuma bola pode.
 export const isFreeGrabbable = (el) =>
-  el.matches(GRABBABLE_SELECTOR) && !isHeld(el) && !isReturning(el) && !el.hasAttribute(NO_GRAB_ATTRIBUTE);
+  el.matches(GRABBABLE_SELECTOR) && !isHeld(el) && !isReturning(el) && !el.hasAttribute(NO_GRAB_ATTRIBUTE)
+  && !el.sceneEl?.systems["game-flow"]?.isMenu();
 
 export function freeGrabbables(sceneEl) {
   return [...sceneEl.querySelectorAll(GRABBABLE_SELECTOR)].filter(isFreeGrabbable);

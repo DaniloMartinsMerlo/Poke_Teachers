@@ -465,3 +465,39 @@ professores.
 
 ### Pendências
 - Validar no Quest 3 (lista no A_FAZER).
+
+## 2026-11-23 — tela inicial (etapa 1 dos 2 jogadores)
+
+### Mudanças
+- **Sistema `game-flow`** (`systems/game-flow.js`): modo `menu` ou
+  `match` (com `opponent`, por ora só `cpu`). O jogo começa no menu.
+  `startMatch(opponent)` / `openMenu()` resetam o jogo (GAME_RESET) e
+  avisam GAME_MODE_CHANGED. Constantes em `config/menu.js`.
+- **Tela inicial** (componente `main-menu`, uma entidade no
+  `index.html`): painel 3D 1,4 m à frente da cabeça. Telas: início (J1 x
+  COMP, J1 x J2, Creditos), J1 x J2 (Criar sala / Entrar cinzas com aviso
+  "Em breve: partida online", Voltar) e créditos (painel branco com a foto
+  do Murilo e "Voltar"). Navegação pura em `domain/menu.js`
+  (`chooseMenuOption`, `panelPlacement`, `stackPositions`).
+- **No menu:** nenhuma bola pode ser pega (`isFreeGrabbable` consulta o
+  `game-flow`), o HUD de batalha some e fica sem botões, a CPU não joga
+  (`cpu-player` só age em partida contra a CPU).
+- **Fim de jogo:** HUD com "Jogar de novo" e "Menu" lado a lado; "Menu"
+  (`HUD_ACTIONS.MENU`) volta para a tela inicial.
+- Pinça em botões de painel extraída para `utils/pinch.js`
+  (`pinchWorldPoint`, `buttonAtPoint`), usada pelo HUD e pelo menu.
+
+### Decisões e motivos
+- Painel parado no mundo, posicionado ao abrir o menu e ao entrar/sair do
+  VR (a cabeça "pula"): seguir a cabeça enjoa, e o jogador não anda no
+  menu.
+- Painel e HUD escondidos ficam **sem botões** (não só invisíveis): o
+  raycaster do A-Frame acerta objetos invisíveis, e um botão escondido
+  poderia "roubar" o laser ou o clique.
+- Trocar de modo sempre reseta: a partida começa limpa e o menu não
+  guarda PokeProf em campo.
+- Créditos com a foto do Murilo: pedido do usuário (piada interna,
+  provisório).
+
+### Pendências
+- Etapas 2–6 dos 2 jogadores (A_FAZER). Validar o painel no Quest 3.

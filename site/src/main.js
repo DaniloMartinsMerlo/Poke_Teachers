@@ -13,6 +13,7 @@
 import "./systems/physics.js";
 import "./systems/input-mode.js";
 import "./systems/battle.js";
+import "./systems/game-flow.js";
 
 import "./components/physics/physics-body.js";
 
@@ -35,6 +36,7 @@ import "./components/game/battle-hud.js";
 import "./components/game/pokeprof.js";
 import "./components/game/cpu-player.js";
 import "./components/game/battle-callouts.js";
+import "./components/game/main-menu.js";
 
 import "./components/player/player-hand.js";
 import "./components/player/player-controller.js";

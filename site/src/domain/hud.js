@@ -16,8 +16,8 @@ export function chooseHudOption(page, choice) {
     return { page: PAGES.MAIN, emit: null };
   }
   if (page === PAGES.GAME_OVER) {
-    return choice.action === ACTIONS.PLAY_AGAIN
-      ? { page: PAGES.MAIN, emit: { action: ACTIONS.PLAY_AGAIN } }
+    return choice.action === ACTIONS.PLAY_AGAIN || choice.action === ACTIONS.MENU
+      ? { page: PAGES.MAIN, emit: { action: choice.action } }
       : { page, emit: null };
   }
   if (page === PAGES.MAIN) {

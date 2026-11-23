@@ -21,6 +21,31 @@ async function run() {
   cpuEl.setAttribute("cpu-player", "enabled", false);
   for (let i = 0; i < 10; i++) await frame(); step("frames");
   const out = {};
+
+  // Tela inicial: o jogo começa no menu; bolas travadas, HUD escondido.
+  const flow = scene.systems["game-flow"];
+  const menuEl = scene.querySelector("[main-menu]");
+  const hudEl = scene.querySelector("[battle-hud]");
+  const menuButtons = () => [...menuEl.querySelectorAll(".menu-button")];
+  const pressMenu = async (option) => { menuButtons().find((b) => b.dataset.option === option).emit("click"); await frame(); };
+  out.startsInMenu = flow.isMenu();
+  out.menuVisible = menuEl.object3D.visible;
+  out.menuHomeOptions = menuButtons().map((b) => b.dataset.option);
+  out.menuInFrontOfPlayer = +menuEl.object3D.position.z.toFixed(2);
+  out.hudHiddenInMenu = !hudEl.object3D.visible && hudEl.querySelectorAll(".hud-button").length === 0;
+  await pressMenu("credits");
+  out.creditsScreen = [menuEl.dataset.screen, menuEl.querySelector(".menu-credits-image").getAttribute("visible"),
+    menuEl.querySelector(".menu-credits-image").getAttribute("src"), menuButtons().map((b) => b.dataset.option)];
+  await pressMenu("back");
+  await pressMenu("vs-player");
+  out.versusScreen = [menuEl.dataset.screen, menuButtons().map((b) => `${b.dataset.option}:${b.dataset.soon}`)];
+  await pressMenu("create-room");
+  out.versusSoonStatus = menuEl.querySelector(".menu-status").getAttribute("value");
+  await pressMenu("back");
+  await pressMenu("vs-cpu");
+  out.matchStarted = [flow.mode, flow.opponent];
+  out.menuHiddenInMatch = !menuEl.object3D.visible && menuButtons().length === 0;
+  out.hudShownInMatch = hudEl.object3D.visible && hudEl.querySelectorAll(".hud-button").length === 4;
   const balls = [...document.querySelectorAll(".grabbable")];
   out.balls = balls.map((b) => b.object3D.position.toArray().map((n) => +n.toFixed(2)));
   out.obstacles = document.querySelectorAll(".player-obstacle").length;
@@ -468,6 +493,7 @@ async function run() {
   out.hudGameOverPage = hud.dataset.page;
   out.hudResult = hud.querySelector(".hud-result")?.getAttribute("value");
   out.gameOverButtons = hudButtons().map((b) => b.dataset.option);
+  out.gameOverButtonsSideBySide = new Set(hudButtons().map((b) => +b.object3D.position.y.toFixed(3))).size === 1;
   await press("playagain");
   for (let i = 0; i < 3; i++) await frame();
   out.afterPlayAgain = {
@@ -477,6 +503,27 @@ async function run() {
     allHealed: [...p1Rack.balls, ...p2Rack.balls].every((b) => b.components.pokeprof.prof.hp === b.components.pokeprof.prof.maxHp()),
     onField: document.querySelectorAll(".released-pokemon").length,
   };
+  // Fim de jogo → Menu: volta para a tela inicial, sem partida.
+  battle.result = { winner: "p1", loser: "p2", wait: 0 };
+  hud.components["battle-hud"].showGameOver(true);
+  await press("menu");
+  for (let i = 0; i < 3; i++) await frame();
+  out.backToMenu = {
+    menu: flow.isMenu(),
+    menuVisible: menuEl.object3D.visible,
+    screen: menuEl.dataset.screen,
+    hudHidden: !hud.object3D.visible,
+    cpuIdle: cpuEl.dataset.cpuState,
+    gameOverCleared: !battle.isGameOver(),
+  };
+  // No menu a bola não pode ser pega.
+  const lockedBall = p1Rack.balls[0];
+  const rigInv2 = rig.object3D.matrixWorld.clone().invert();
+  tc.controllers = [{ handedness: "left", hand: {}, profiles: ["generic-hand"] }];
+  mode.refresh();
+  leftHand.emit("pinchstarted", { position: lockedBall.object3D.getWorldPosition(new THREE.Vector3()).applyMatrix4(rigInv2) });
+  out.cantGrabInMenu = !lockedBall.hasAttribute("data-held");
+  leftHand.emit("pinchended", {});
   out.errors = errors;
   report(out);
 }

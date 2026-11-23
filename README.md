@@ -140,15 +140,15 @@ O WebXR só funciona em HTTPS. O Caddy gera um certificado com uma autoridade ce
 
 ### Controles
 
-| Ação | Mãos (Quest) | Controles (Quest) |
-|---|---|---|
-| Pegar pokébola | Pinça perto da bola | Gatilho ou grip (encostado ou apontando o laser) |
-| Arremessar | Abrir a pinça em movimento | Soltar o gatilho/grip em movimento |
-| Aproximar/afastar a bola segurada | — | Analógico para cima/baixo |
-| Botões do menu de batalha | Pinça no botão | Laser + gatilho |
-| Andar | — | Analógico esquerdo |
-| Girar | Virar o corpo | Analógico direito |
-| Reiniciar o jogo | — | B ou Y |
+| Ação | Mãos (Quest) | Controles (Quest) | Computador (navegador) |
+|---|---|---|---|
+| Pegar pokébola | Pinça perto da bola | Gatilho ou grip (encostado ou apontando o laser) | Clique na bola |
+| Arremessar | Abrir a pinça em movimento | Soltar o gatilho/grip em movimento | Clique em qualquer lugar (vai na direção do ponteiro) |
+| Aproximar/afastar a bola segurada | — | Analógico para cima/baixo | Rodinha do mouse |
+| Botões do menu de batalha | Pinça no botão | Laser + gatilho | Clique no botão |
+| Andar | — | Analógico esquerdo | W A S D (Espaço/Shift sobem/descem) |
+| Girar | Virar o corpo | Analógico direito | Arrastar o mouse |
+| Reiniciar o jogo | — | B ou Y | R |
 
 Quando o jogador alterna entre as mãos e os controles, o jogo detecta a mudança sozinho.
 
@@ -180,6 +180,7 @@ Aponte (laser ou mouse) e clique, ou encoste a pinça no botão. No fim da parti
 .
 ├── site/                 conteúdo publicado
 │   ├── index.html        declaração da cena A-Frame
+│   ├── net-test.html     teste de conexão entre dois aparelhos (partida online)
 │   ├── assets/           imagens dos professores e modelos 3D
 │   └── src/
 │       ├── main.js       importa todos os componentes
@@ -187,6 +188,7 @@ Aponte (laser ou mouse) e clique, ou encoste a pinça no botão. No fim da parti
 │       ├── domain/       regras do jogo puras (sem A-Frame), testáveis no Node
 │       ├── systems/      estado global da cena (física, modo de entrada, batalha/turnos)
 │       ├── components/   componentes A-Frame (cena, interação, locomoção, jogo…)
+│       ├── net/          transporte da partida online (PeerJS)
 │       └── utils/        funções auxiliares
 ├── tests/
 │   ├── domain.test.js    testes unitários das regras

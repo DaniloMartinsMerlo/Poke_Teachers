@@ -14,6 +14,18 @@ export const REEL_DEAD_ZONE = 0.15;
 // Rodinha do mouse: metros por unidade de deltaY (1 "clique" ≈ 100).
 export const WHEEL_METERS_PER_UNIT = 0.004;
 
+// Mouse (computador): ao pegar, a bola vem para a "mão", nesta posição em
+// relação à câmera (m: direita, cima, frente = -z). Assim ela sai de cima
+// do suporte (senão seria encaixada de volta ao arremessar) e fica à vista.
+export const MOUSE_HOLD_OFFSET = Object.freeze({ x: 0.15, y: -0.15, z: -0.6 });
+// Mouse (computador): arremesso na direção do ponteiro, a esta velocidade
+// (m/s) e com este empurrão para cima (m/s), para a bola fazer um arco.
+export const MOUSE_THROW_SPEED = 6;
+export const MOUSE_THROW_LIFT = 2;
+// Mouse que andou mais que isto (px) entre apertar e soltar foi arrasto
+// (girar a câmera), não clique.
+export const MOUSE_DRAG_PIXELS = 6;
+
 // Encaixes do suporte: soltar a bola a menos disto do encaixe a trava lá.
 export const SLOT_SNAP_DISTANCE = 0.3;
 // Um encaixe está ocupado se houver bola a menos disto dele.

@@ -53,15 +53,22 @@ Fim de partida: "Jogar de novo" (mesma sala, mesmos jogadores) e
 
 ### Etapas
 
-- [ ] **2. Teste de conexão (spike)** antes de construir o resto: página
-  simples com PeerJS conectando **dois Quests na rede onde vamos
-  apresentar** (Wi-Fi do Inteli) e trocando mensagens. Se não conectar,
-  decidir entre servidor TURN gratuito ou Supabase Realtime. Registrar o
-  resultado no HISTORICO.
+- [ ] **2. Teste de conexão (spike)** — página pronta:
+  `site/net-test.html` (no Pages: `/net-test.html`). Já usa o transporte
+  do jogo (`src/net/peer-transport.js`) e mostra o tipo de conexão e o
+  tempo de ida e volta. Testado no Chrome do PC contra o servidor público
+  do PeerJS (sala, cheia, não encontrada, código em uso, saída: ok).
+  **Falta:** testar **PC (navegador) x Quest** na rede onde vamos
+  apresentar (Wi-Fi do Inteli). Se não conectar, decidir entre servidor
+  TURN gratuito ou Supabase Realtime. Registrar o resultado no HISTORICO.
+  - Decidido: o J2 pode estar no PC (mouse e teclado) ou no Quest; no
+    Quest a partida é em VR (imersão). A página de teste é 2D só para
+    medir a rede.
 - [ ] **3. Salas: criar e entrar.**
-  - `domain/room.js`: gerar código de 4 dígitos, validar o digitado,
-    montar o ID do PeerJS. `systems/network.js` (ou similar): transporte
-    PeerJS atrás da interface acima.
+  - Já existem (etapa 2): `domain/room.js` (gerar/validar o código, ID
+    do PeerJS), `src/net/peer-transport.js` (transporte com a interface
+    acima e os erros "room-taken", "not-found", "full", "timeout") e
+    `config/network.js`. Falta ligar no jogo (sistema de rede + telas).
   - Criar: gera o código, abre o "peer" do anfitrião, mostra "Sala 4827 —
     Aguardando J2..." com botão Cancelar. Código já em uso → gera outro.
   - Entrar: teclado numérico 3D (10 dígitos + apagar + entrar), mostra
@@ -123,18 +130,18 @@ Fim de partida: "Jogar de novo" (mesma sala, mesmos jogadores) e
   andar só com as mãos: pensar em um gesto para isso. Pedido depois de
   validar a pinça no Quest 3.
 - [ ] Trocar os pokémons de primitivas por modelos `.glb` (Blender).
-- [ ] **Controles no computador (teclado/mouse): decidir entre remover ou
-  corrigir.** Hoje não funcionam direito no navegador e foram retirados da
-  tabela de controles do README. Componentes envolvidos: `cursor-grabber`,
-  `keyboard-reset`, `vertical-controls`, `wasd-controls`/`look-controls` e
-  o `<a-cursor id="mouse-cursor">` em `site/index.html`. Se corrigir, voltar
-  a coluna "Computador" na tabela do README.
+## Validar no navegador do PC
+
+- [ ] Mouse: clicar na bola pega (ela vem para a frente da câmera); clique
+  em qualquer lugar arremessa na direção do ponteiro; arrastar gira a
+  câmera sem arremessar; rodinha aproxima/afasta. Botões do menu e do HUD
+  com o mouse. WASD anda, Espaço/Shift sobem/descem, R reseta.
 
 ## Validar no Quest 3
 
-- [ ] Tela inicial: painel aparece à frente ao entrar no VR? Tamanho e
-  distância (1,4 m) confortáveis? Pinça e laser nos botões; foto do
-  Murilo nos créditos; "Menu" no fim de jogo volta para o painel.
+- [ ] Tela inicial: tamanho e distância (1,4 m) confortáveis? Pinça e
+  laser nos botões; foto do Murilo nos créditos; "Menu" no fim de jogo
+  volta para o painel.
 - [ ] PP e precisão no botão de ataque ("~33 dano | 65% | PP 5/5"):
   legível? Balão "Errou!" em branco se destaca?
 - [ ] Trocar gastando o turno: dá para entender que o adversário está
@@ -166,6 +173,8 @@ Detalhes de cada uma em `docs/HISTORICO.md`.
 - [x] Pokébola fora da arena volta para o suporte.
 - [x] Etapa 1 dos 2 jogadores: tela inicial (J1 x COMP, J1 x J2 em breve,
   créditos com o Murilo) e botão "Menu" no fim de jogo.
+- [x] Controles no computador corrigidos (cursor segue o mouse; bola
+  arremessada não volta mais para o encaixe).
 
 ### Validadas no Quest 3
 
@@ -177,3 +186,5 @@ Detalhes de cada uma em `docs/HISTORICO.md`.
 - [x] Colisões dos arremessos contra arquibancadas e torres.
 - [x] Carretilha reta ao longo do laser (bola defasada ao passar o laser
   pelo chão: aceito, sem correção).
+- [x] Tela inicial aparece à frente, na altura dos olhos, ao entrar no VR
+  (antes ficava abaixo do chão).

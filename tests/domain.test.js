@@ -603,3 +603,31 @@ test("menu: painel nunca abaixo da altura mínima; espera a cabeça ter posiçã
   assert.equal(shouldReplacePanel(head, { x: 0, y: -0.2, z: 5.6 }, null, rules), true);
   assert.equal(shouldReplacePanel(head, { x: 0, y: 1.45, z: 0 }, null, rules), true);
 });
+
+// ------------------------------------------------------------ mouse
+import { isMouseDrag, mouseThrowVelocity } from "../site/src/domain/mouse.js";
+
+test("mouse: arrastar para girar a câmera não é clique", () => {
+  assert.equal(isMouseDrag({ x: 100, y: 100 }, { x: 103, y: 102 }, 6), false);
+  assert.equal(isMouseDrag({ x: 100, y: 100 }, { x: 140, y: 100 }, 6), true);
+});
+
+test("mouse: arremesso na direção do ponteiro, com empurrão para cima", () => {
+  const v = mouseThrowVelocity({ x: 0, y: 0, z: -2 }, 6, 2);
+  assert.ok(Math.abs(v.z + 6) < 1e-9 && Math.abs(v.y - 2) < 1e-9 && v.x === 0);
+});
+
+// ------------------------------------------------------- sala online
+import { generateRoomCode, isValidRoomCode, normalizeRoomCode, roomPeerId } from "../site/src/domain/room.js";
+
+test("sala: código de 4 dígitos com zeros à esquerda; valida o digitado", () => {
+  assert.equal(generateRoomCode(4, () => 0), "0000");
+  assert.equal(generateRoomCode(4, () => 0.0427), "0427");
+  assert.equal(generateRoomCode(4, () => 0.99999), "9999");
+  for (let i = 0; i < 50; i++) assert.ok(isValidRoomCode(generateRoomCode(4), 4));
+  assert.equal(normalizeRoomCode(" 48-27 "), "4827");
+  assert.equal(isValidRoomCode("4827", 4), true);
+  assert.equal(isValidRoomCode("482", 4), false);
+  assert.equal(isValidRoomCode("48a7", 4), false);
+  assert.equal(roomPeerId("4827", "poketeachers-inteli-"), "poketeachers-inteli-4827");
+});

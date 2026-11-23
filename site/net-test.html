@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PokeProf - teste de conexão</title>
+    <!-- Etapa 2 do J1 x J2: testa se dois aparelhos (navegador e Quest)
+         conseguem se conectar ponto a ponto nesta rede, com o mesmo
+         transporte que o jogo vai usar (src/net/peer-transport.js).
+         Versão da PeerJS: a mesma de PEERJS_URL em src/config/network.js. -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0; padding: 16px; background: #1d2533; color: #fff;
+        font: 18px/1.4 system-ui, sans-serif; max-width: 720px; margin-inline: auto;
+      }
+      h1 { color: #ffd23f; font-size: 26px; margin: 8px 0 4px; }
+      p.hint { color: #c9d6ea; margin: 0 0 16px; }
+      section { background: #26303f; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+      button, input {
+        font: inherit; border-radius: 10px; border: 0; padding: 14px 18px; min-height: 56px;
+      }
+      button { background: #3a4a63; color: #fff; cursor: pointer; margin: 4px 8px 4px 0; }
+      button:hover:not(:disabled) { background: #ffd23f; color: #1d1d1d; }
+      button:disabled { background: #5b5f66; color: #b8bcc4; cursor: default; }
+      input {
+        width: 6.5em; text-align: center; letter-spacing: 0.3em; font-size: 28px;
+        background: #11161f; color: #fff;
+      }
+      .code { font-size: 56px; letter-spacing: 0.2em; color: #ffd23f; font-weight: 700; }
+      .status { font-size: 20px; font-weight: 600; }
+      .ok { color: #4cd964; } .bad { color: #ff6b5e; } .wait { color: #ffd23f; }
+      dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 8px 0 0; }
+      dt { color: #c9d6ea; } dd { margin: 0; font-weight: 600; }
+      #log { font: 14px/1.5 ui-monospace, monospace; color: #c9d6ea; max-height: 240px; overflow: auto; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <h1>Teste de conexão J1 x J2</h1>
+    <p class="hint">Abra esta página nos dois aparelhos (computador e Quest). Em um, crie a sala; no outro, digite o código e entre.</p>
+
+    <section>
+      <div class="status wait" id="status">Desconectado</div>
+      <div class="code" id="code" hidden></div>
+    </section>
+
+    <section id="setup">
+      <button id="create">Criar sala</button>
+      <div style="margin-top: 12px">
+        <input id="code-input" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off" />
+        <button id="join">Entrar</button>
+      </div>
+    </section>
+
+    <section id="live" hidden>
+      <button id="ping">Enviar ping</button>
+      <button id="leave">Sair</button>
+      <dl>
+        <dt>Este aparelho</dt><dd id="role">-</dd>
+        <dt>Tipo de conexão</dt><dd id="kind">-</dd>
+        <dt>Pings respondidos</dt><dd id="pongs">0</dd>
+        <dt>Ida e volta (média)</dt><dd id="rtt">-</dd>
+        <dt>Ida e volta (última)</dt><dd id="rtt-last">-</dd>
+      </dl>
+    </section>
+
+    <section>
+      <div id="log"></div>
+    </section>
+
+    <script type="module">
+      import { ROOM } from "./src/config/network.js";
+      import { generateRoomCode, isValidRoomCode, normalizeRoomCode } from "./src/domain/room.js";
+      import { PeerTransport } from "./src/net/peer-transport.js";
+
+      const $ = (id) => document.getElementById(id);
+      const KIND_TEXT = {
+        host: "rede local (direto)",
+        srflx: "internet (P2P direto)",
+        prflx: "P2P direto",
+        relay: "via servidor TURN",
+      };
+      let transport = null;
+      let pingTimer = null;
+      let seq = 0;
+      const rtts = [];
+
+      const log = (text) => {
+        const time = new Date().toLocaleTimeString("pt-BR");
+        $("log").textContent = `${time}  ${text}\n` + $("log").textContent;
+      };
+      const setStatus = (text, kind) => {
+        $("status").textContent = text;
+        $("status").className = `status ${kind}`;
+      };
+      const setBusy = (busy) => {
+        $("create").disabled = busy;
+        $("join").disabled = busy;
+        $("code-input").disabled = busy;
+      };
+      const device = /OculusBrowser|Quest/i.test(navigator.userAgent) ? "Quest" : "Computador";
+      log(`Aparelho: ${device}`);
+
+      function wire(role) {
+        $("role").textContent = `${role} (${device})`;
+        transport.on("connected", onConnected);
+        transport.on("message", onMessage);
+        transport.on("closed", () => {
+          if (!transport) return; // nós mesmos fechamos
+          setStatus("O outro aparelho saiu", "bad");
+          log("Conexão fechada");
+          stop();
+        });
+        transport.on("error", (err) => log(`Erro: ${err.code} - ${err.message}`));
+      }
+
+      async function onConnected() {
+        setStatus("Conectado!", "ok");
+        $("setup").hidden = true;
+        $("live").hidden = false;
+        log("Conectado ao outro aparelho");
+        transport.send({ type: "hello", device });
+        pingTimer = setInterval(sendPing, 2000);
+        setTimeout(async () => {
+          const { candidateType } = await transport.stats();
+          $("kind").textContent = KIND_TEXT[candidateType] || candidateType || "desconhecido";
+          log(`Tipo de conexão: ${candidateType}`);
+        }, 1500);
+      }
+
+      function onMessage(msg) {
+        if (msg.type === "hello") log(`Outro aparelho: ${msg.device}`);
+        if (msg.type === "ping") transport.send({ type: "pong", n: msg.n, t: msg.t });
+        if (msg.type === "pong") {
+          const rtt = performance.now() - msg.t;
+          rtts.push(rtt);
+          $("pongs").textContent = rtts.length;
+          $("rtt-last").textContent = `${rtt.toFixed(0)} ms`;
+          $("rtt").textContent = `${(rtts.reduce((a, b) => a + b, 0) / rtts.length).toFixed(0)} ms`;
+        }
+      }
+
+      function sendPing() {
+        seq += 1;
+        transport?.send({ type: "ping", n: seq, t: performance.now() });
+      }
+
+      function stop() {
+        clearInterval(pingTimer);
+        const closing = transport;
+        transport = null;
+        closing?.close();
+        $("setup").hidden = false;
+        $("live").hidden = true;
+        $("code").hidden = true;
+        setBusy(false);
+      }
+
+      $("create").onclick = async () => {
+        setBusy(true);
+        // Código em uso no servidor: tenta outro (até 5 vezes).
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const code = generateRoomCode(ROOM.codeLength);
+          transport = new PeerTransport();
+          wire("Anfitrião (J1)");
+          setStatus("Abrindo sala...", "wait");
+          try {
+            await transport.host(code);
+            $("code").textContent = code;
+            $("code").hidden = false;
+            setStatus("Sala aberta. Aguardando o outro aparelho...", "wait");
+            log(`Sala ${code} aberta`);
+            return;
+          } catch (err) {
+            transport.close();
+            if (err.code !== "room-taken") {
+              setStatus(`Falhou: ${err.message}`, "bad");
+              log(`Erro ao abrir: ${err.code} - ${err.message}`);
+              setBusy(false);
+              return;
+            }
+            log(`Código ${code} em uso, tentando outro`);
+          }
+        }
+        setStatus("Não consegui abrir a sala", "bad");
+        setBusy(false);
+      };
+
+      $("join").onclick = async () => {
+        const code = normalizeRoomCode($("code-input").value);
+        if (!isValidRoomCode(code, ROOM.codeLength)) {
+          setStatus(`Digite os ${ROOM.codeLength} dígitos da sala`, "bad");
+          return;
+        }
+        setBusy(true);
+        transport = new PeerTransport();
+        wire("Convidado (J2)");
+        setStatus(`Entrando na sala ${code}...`, "wait");
+        try {
+          await transport.join(code);
+        } catch (err) {
+          setStatus(`Falhou: ${err.message}`, "bad");
+          log(`Erro ao entrar: ${err.code} - ${err.message}`);
+          stop();
+        }
+      };
+
+      $("ping").onclick = sendPing;
+      $("leave").onclick = () => { setStatus("Desconectado", "wait"); stop(); };
+    </script>
+  </body>
+</html>

@@ -20,6 +20,7 @@ import "./components/physics/physics-body.js";
 import "./components/interaction/hand-grabber.js";
 import "./components/interaction/controller-grabber.js";
 import "./components/interaction/cursor-grabber.js";
+import "./components/interaction/desktop-cursor.js";
 import "./components/interaction/controller-input-gate.js";
 import "./components/interaction/pokemon-preview.js";
 import "./components/interaction/pokemon-release.js";

@@ -1,6 +1,7 @@
 import { ARENA_BOUNDS, TRAINER_BOX_Z } from "../../config/arena.js";
 import {
   EVENTS, GRABBABLE_CLASS, GRABBABLE_SELECTOR, HELD_ATTRIBUTE, MAX_FRAME_MS, RETURNING_ATTRIBUTE,
+  THROWN_ATTRIBUTE,
 } from "../../config/constants.js";
 import {
   BLOCKED_RETURN_DELAY, OUT_OF_ARENA_RETURN_DELAY, RETURN_ARC_HEIGHT, RETURN_DURATION, RETURN_SPINS,
@@ -281,7 +282,8 @@ AFRAME.registerComponent("ball-rack", {
 
   trySnap(ball) {
     const physics = ball.components && ball.components["physics-body"];
-    if (!physics || !ball.matches(GRABBABLE_SELECTOR)) {
+    // Arremessada (mouse): vai para o campo, não para o encaixe.
+    if (!physics || !ball.matches(GRABBABLE_SELECTOR) || ball.hasAttribute(THROWN_ATTRIBUTE)) {
       return;
     }
     const slot = this.freeSlotNear(ball);

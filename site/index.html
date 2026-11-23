@@ -55,8 +55,10 @@
            Mãos rastreadas: pinça pega e solta.
            Controles: gatilho/grip pegam, B/Y resetam, analógico esquerdo
            anda e o direito gira.
-           Computador: WASD + mouse, Espaço/Shift sobem/descem, clique pega
-           e arremessa, R reseta. -->
+           Computador: WASD anda, arrastar o mouse gira a câmera, clique na
+           bola pega e outro clique (em qualquer lugar) arremessa na direção
+           do ponteiro, rodinha aproxima/afasta, Espaço/Shift sobem/descem,
+           R reseta. -->
       <a-entity
         id="camera-rig"
         position="0 0 7"
@@ -65,7 +67,8 @@
         wasd-controls="acceleration: 20"
         vertical-controls>
         <a-entity camera position="0 1.6 0" look-controls>
-          <a-cursor id="mouse-cursor" raycaster="objects: .grabbable, .hud-button" fuse="false" color="#ffffff"></a-cursor>
+          <!-- Cursor do mouse: o raio sai do ponteiro (não do centro da tela). -->
+          <a-entity id="mouse-cursor" cursor="rayOrigin: mouse; fuse: false" raycaster="objects: .grabbable, .hud-button" desktop-cursor></a-entity>
         </a-entity>
         <a-entity player-hand="hand: left"></a-entity>
         <a-entity player-hand="hand: right"></a-entity>

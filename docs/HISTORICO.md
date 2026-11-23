@@ -515,3 +515,42 @@ professores.
   HUD, que relê a cabeça a cada quadro e funciona no Quest.
 - Título da aba do navegador: "PokeProf".
 
+## 2026-11-23 — controles no PC corrigidos; teste de conexão (etapa 2)
+
+### Mudanças
+- **Mouse no navegador do PC:** o `<a-cursor>` de olhar (raio fixo no
+  centro da tela) virou `cursor="rayOrigin: mouse"` (`#mouse-cursor`): o
+  raio sai do ponteiro. `cursor-grabber`: clique na bola pega e ela vem
+  para a "mão" (`MOUSE_HOLD_OFFSET`, 60 cm à frente da câmera); segurando,
+  clique em qualquer lugar do canvas arremessa na direção do raio do mouse
+  (`MOUSE_THROW_SPEED` 6 m/s + 2 m/s para cima); arrastar mais de 6 px
+  (girar a câmera) não arremessa (`domain/mouse.js`). No VR o cursor do
+  mouse desliga (`desktop-cursor`). Coluna "Computador" de volta na
+  tabela de controles do README.
+- **Etapa 2 (J1 x J2):** `site/net-test.html` (página 2D) cria/entra numa
+  sala de 4 dígitos, troca pings a cada 2 s e mostra o tempo de ida e
+  volta e o tipo de conexão (rede local, P2P pela internet ou TURN).
+  Usa o transporte que o jogo vai usar: `src/net/peer-transport.js`
+  (PeerJS 1.5.4 via unpkg; `host`/`join`/`send`/`on`/`close`/`stats`,
+  erros `room-taken`, `not-found`, `full`, `timeout`, `network`),
+  `domain/room.js` e `config/network.js`.
+
+### Decisões e motivos
+- **Causa do "não funciona no navegador":** o cursor ficava no centro da
+  tela (não seguia o mouse), o 2º clique precisava acertar a própria bola
+  e, principalmente, a bola pega continuava em cima do suporte — ao soltar,
+  o suporte a encaixava de volta e anulava o arremesso. Agora a bola vem
+  para a frente da câmera e bola arremessada (`data-thrown`) não é
+  encaixada.
+- **J2 no PC ou no Quest:** o usuário quer testar PC (navegador) x Quest;
+  no Quest a partida é em VR (imersão), no PC com mouse/teclado. A página
+  de teste é 2D só para medir a rede.
+- Transporte testado de verdade (Chrome headless, duas conexões na mesma
+  página, servidor público do PeerJS): sala abre, convidado entra,
+  mensagens chegam, 3º recebe "full", código inexistente "not-found",
+  código repetido "room-taken", saída percebida. Conexão local = "host".
+
+### Pendências
+- Testar PC x Quest na rede do Inteli com `net-test.html` (A_FAZER).
+- Validar o mouse no navegador do PC.
+

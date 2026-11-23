@@ -21,6 +21,9 @@ export const RETURNING_ATTRIBUTE = "data-returning";
 // Bola que nenhuma pessoa pode pegar (as da CPU).
 export const NO_GRAB_ATTRIBUTE = "data-no-grab";
 
+// Bola sendo arremessada (mouse): o suporte não a encaixa ao ser solta.
+export const THROWN_ATTRIBUTE = "data-thrown";
+
 export const MOUSE_CURSOR_ID = "mouse-cursor";
 
 export const HANDS = Object.freeze(["left", "right"]);

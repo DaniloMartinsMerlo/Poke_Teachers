@@ -133,6 +133,12 @@ apagado.
   divergência de vida ou acerto. Optei por não mostrar um avatar do outro
   jogador por enquanto.
 - Passei a registrar as decisões e aprendizados neste status report.
+- Decidi que o modo de 2 jogadores vai funcionar entre o **navegador do PC**
+  (mouse e teclado) e o **Quest em VR**, para manter a imersão de quem está
+  com o headset. Por isso corrigi os controles do PC antes de seguir.
+- Fiz uma página de teste de conexão que já usa a mesma camada de rede do
+  jogo, para descobrir cedo se a rede da faculdade permite a conexão direta
+  entre os aparelhos, antes de construir as salas.
 
 **O que aprendi:**
 
@@ -146,11 +152,16 @@ apagado.
   cabeça. Meu menu era posicionado nesse instante, com a câmera na altura 0, e
   aparecia embaixo do chão. Passei a esperar a posição real da cabeça antes de
   posicioná-lo.
+- Os controles no navegador do PC não funcionavam por três motivos juntos: o
+  cursor ficava preso no centro da tela, o segundo clique precisava acertar a
+  própria bola e, o mais escondido, a bola pega continuava em cima do suporte,
+  que a encaixava de volta ao soltar. Só descobri o último com um teste
+  automatizado que media se a bola tinha saído do lugar.
 
 ## Próximos passos
 
-1. Testar a conexão entre dois Quests na rede onde vamos apresentar, antes de
-   construir o modo online. Se o P2P for bloqueado, trocar por um serviço como
+1. Testar a conexão entre o PC e o Quest na rede onde vamos apresentar, com a
+   página de teste, antes de construir o modo online. Se o P2P for bloqueado, trocar por um serviço como
    o Supabase Realtime.
 2. Salas: criar e entrar com o código de 4 dígitos, com teclado numérico 3D.
 3. Sincronizar a batalha e os arremessos entre os dois headsets.

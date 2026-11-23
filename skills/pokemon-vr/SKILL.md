@@ -47,7 +47,8 @@ site/src/
   systems/     estado global da cena: physics, input-mode
   components/  adaptadores A-Frame
     physics/ interaction/ locomotion/ game/ player/ scene/
-  utils/       createEntity, vec3, whenSceneLoaded, frameSeconds
+  net/         transporte da partida online (PeerJS), sem A-Frame
+  utils/       createEntity, vec3, whenSceneLoaded, frameSeconds, pinch
 ```
 - Regra de negócio (cálculo, decisão) vai em `domain/`; o componente só
   lê a cena, chama o domínio e aplica o resultado.

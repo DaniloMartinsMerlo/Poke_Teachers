@@ -547,6 +547,31 @@ async function run() {
   leftHand.emit("pinchstarted", { position: lockedBall.object3D.getWorldPosition(new THREE.Vector3()).applyMatrix4(rigInv2) });
   out.cantGrabInMenu = !lockedBall.hasAttribute("data-held");
   leftHand.emit("pinchended", {});
+
+  // Mouse (computador): clique na bola pega; arrastar (girar a câmera) não
+  // arremessa; clique em qualquer lugar arremessa na direção do ponteiro.
+  out.cursorFollowsMouse = cursor.getAttribute("cursor").rayOrigin;
+  flow.startMatch("cpu"); await frame();
+  const mouseBall = p1Rack.balls[1];
+  const mouseStart = mouseBall.object3D.getWorldPosition(new THREE.Vector3());
+  mouseBall.emit("click", { cursorEl: cursor }); await frame();
+  out.mousePicked = mouseBall.hasAttribute("data-held");
+  await wait(5);
+  const canvas = scene.canvas;
+  const mouse = (type, x, target = canvas) => target.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: 300, bubbles: true }));
+  mouse("mousedown", 300); mouse("mouseup", 380, window); mouse("click", 380);
+  out.mouseDragKeepsBall = mouseBall.hasAttribute("data-held");
+  mouse("mousedown", 300); mouse("mouseup", 301, window); mouse("click", 301);
+  out.mouseClickThrows = !mouseBall.hasAttribute("data-held");
+  out.mouseBallBackInScene = mouseBall.object3D.parent === scene.object3D;
+  for (let i = 0; i < 30; i++) await frame();
+  out.mouseThrownMovedM = +mouseBall.object3D.getWorldPosition(new THREE.Vector3()).distanceTo(mouseStart).toFixed(2);
+  scene.systems["game-flow"].openMenu(); await frame();
+  // No VR o cursor do mouse desliga.
+  scene.emit("enter-vr"); await frame();
+  out.mouseCursorOffInVr = cursor.getAttribute("raycaster").enabled === false;
+  scene.emit("exit-vr"); await frame();
+  out.mouseCursorBackAfterVr = cursor.getAttribute("raycaster").enabled === true;
   out.errors = errors;
   report(out);
 }

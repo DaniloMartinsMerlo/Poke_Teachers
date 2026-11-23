@@ -53,32 +53,17 @@ Fim de partida: "Jogar de novo" (mesma sala, mesmos jogadores) e
 
 ### Etapas
 
-- [ ] **2. Teste de conexão (spike)** — página pronta:
-  `site/net-test.html` (no Pages: `/net-test.html`). Já usa o transporte
-  do jogo (`src/net/peer-transport.js`) e mostra o tipo de conexão e o
-  tempo de ida e volta. Testado no Chrome do PC contra o servidor público
-  do PeerJS (sala, cheia, não encontrada, código em uso, saída: ok).
-  **Falta:** testar **PC (navegador) x Quest** na rede onde vamos
-  apresentar (Wi-Fi do Inteli). Se não conectar, decidir entre servidor
-  TURN gratuito ou Supabase Realtime. Registrar o resultado no HISTORICO.
-  - Decidido: o J2 pode estar no PC (mouse e teclado) ou no Quest; no
-    Quest a partida é em VR (imersão). A página de teste é 2D só para
-    medir a rede.
-- [ ] **3. Salas: criar e entrar.**
-  - Já existem (etapa 2): `domain/room.js` (gerar/validar o código, ID
-    do PeerJS), `src/net/peer-transport.js` (transporte com a interface
-    acima e os erros "room-taken", "not-found", "full", "timeout") e
-    `config/network.js`. Falta ligar no jogo (sistema de rede + telas).
-  - Criar: gera o código, abre o "peer" do anfitrião, mostra "Sala 4827 —
-    Aguardando J2..." com botão Cancelar. Código já em uso → gera outro.
-  - Entrar: teclado numérico 3D (10 dígitos + apagar + entrar), mostra
-    os dígitos digitados; erros "Sala nao encontrada" / "Sala cheia".
-  - Ligar nos botões que já existem: "Criar sala" e "Entrar" da tela
-    J1 x J2 (`MENU_OPTIONS` em `config/menu.js`, hoje com `soon: true`) e
-    o modo `OPPONENTS.PLAYER` do sistema `game-flow`.
-  - Conectou: os dois vão para a partida. Desconexão a qualquer momento
-    → aviso "Adversario saiu" e volta à tela inicial.
+- [ ] **Plano B de rede para a apresentação.** A rede da faculdade
+  **bloqueia P2P** (testado com `net-test.html`); no roteador de casa
+  funciona. Por enquanto seguimos com P2P e o usuário valida em casa.
+  Antes de apresentar na faculdade: servidor TURN gratuito ou trocar o
+  transporte (`src/net/`) por Supabase Realtime (porta 443), ou levar um
+  roteador próprio.
 - [ ] **4. Sincronizar a batalha.**
+  - Já pronto (etapa 3): o sistema `network` repassa as mensagens do outro
+    aparelho como `NETWORK_MESSAGE` e envia com `network.send(msg)`;
+    `game-flow.role` diz se este aparelho é o anfitrião (`host`, J1) ou o
+    convidado (`guest`, J2).
   - No anfitrião, componente `remote-player` no suporte do J2, no lugar
     do `cpu-player`: recebe as escolhas do J2 e chama `battle.choose()`,
     como a CPU faz.
@@ -132,6 +117,10 @@ Fim de partida: "Jogar de novo" (mesma sala, mesmos jogadores) e
 - [ ] Trocar os pokémons de primitivas por modelos `.glb` (Blender).
 ## Validar no Quest 3
 
+- [ ] Salas J1 x J2 (PC x Quest, no roteador de casa): criar a sala
+  mostra o código; teclado numérico com laser/pinça; erros legíveis;
+  ao conectar os dois entram na partida; fechar a aba de um avisa o
+  outro ("O adversario saiu da partida").
 - [ ] Tela inicial: tamanho e distância (1,4 m) confortáveis? Pinça e
   laser nos botões; foto do Murilo nos créditos; "Menu" no fim de jogo
   volta para o painel.
@@ -168,6 +157,10 @@ Detalhes de cada uma em `docs/HISTORICO.md`.
   créditos com o Murilo) e botão "Menu" no fim de jogo.
 - [x] Controles no computador corrigidos (cursor segue o mouse; bola
   arremessada não volta mais para o encaixe).
+- [x] Etapa 2 dos 2 jogadores: teste de conexão (`net-test.html`) —
+  funciona no roteador de casa; a rede da faculdade bloqueia P2P.
+- [x] Etapa 3 dos 2 jogadores: criar sala (código de 4 dígitos), entrar
+  com teclado numérico 3D, erros, aviso quando o outro sai.
 
 ### Validadas no Quest 3
 

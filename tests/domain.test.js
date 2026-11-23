@@ -567,15 +567,22 @@ import { MENU_OPTIONS } from "../site/src/config/menu.js";
 
 test("menu: J1 x COMP abre a partida; J1 x J2 e créditos trocam de tela; Voltar volta", () => {
   const go = (screen, action, extra = {}) => chooseMenuOption(screen, { action, ...extra });
-  assert.deepEqual(go("home", "vs-cpu"), { screen: "home", start: "cpu", notice: null });
+  assert.deepEqual(go("home", "vs-cpu"), { screen: "home", start: "cpu", notice: null, network: null });
   assert.equal(go("home", "vs-player").screen, "versus");
   assert.equal(go("home", "credits").screen, "credits");
   assert.equal(go("credits", "back").screen, "home");
   assert.equal(go("versus", "back").screen, "home");
-  // Salas online ainda não existem: só o aviso.
-  assert.deepEqual(go("versus", "create-room", { soon: true }), { screen: "versus", start: null, notice: "soon" });
-  assert.ok(MENU_OPTIONS.versus.filter((o) => o.action !== "back").every((o) => o.soon));
+  // Opção marcada "soon": só o aviso.
+  assert.equal(go("versus", "create-room", { soon: true }).notice, "soon");
   assert.deepEqual(MENU_OPTIONS.home.map((o) => o.action), ["vs-cpu", "vs-player", "credits"]);
+  // Salas: criar abre a sala; entrar abre o teclado; Entrar conecta;
+  // Cancelar/Voltar saem da sala e voltam para J1 x J2.
+  assert.deepEqual(go("versus", "create-room"), { screen: "hosting", start: null, notice: null, network: "create" });
+  assert.deepEqual(go("versus", "join-room"), { screen: "join", start: null, notice: null, network: null });
+  assert.equal(go("join", "enter").network, "join");
+  assert.deepEqual(go("hosting", "back"), { screen: "versus", start: null, notice: null, network: "leave" });
+  assert.deepEqual(go("join", "back"), { screen: "versus", start: null, notice: null, network: "leave" });
+  assert.equal(go("versus", "back").network, null);
 });
 
 test("menu: painel à frente da cabeça e botões empilhados de cima para baixo", () => {
@@ -618,7 +625,9 @@ test("mouse: arremesso na direção do ponteiro, com empurrão para cima", () =>
 });
 
 // ------------------------------------------------------- sala online
-import { generateRoomCode, isValidRoomCode, normalizeRoomCode, roomPeerId } from "../site/src/domain/room.js";
+import {
+  displayRoomCode, generateRoomCode, isCompatibleHello, isValidRoomCode, normalizeRoomCode, roomPeerId, typeRoomKey,
+} from "../site/src/domain/room.js";
 
 test("sala: código de 4 dígitos com zeros à esquerda; valida o digitado", () => {
   assert.equal(generateRoomCode(4, () => 0), "0000");
@@ -630,4 +639,22 @@ test("sala: código de 4 dígitos com zeros à esquerda; valida o digitado", () 
   assert.equal(isValidRoomCode("482", 4), false);
   assert.equal(isValidRoomCode("48a7", 4), false);
   assert.equal(roomPeerId("4827", "poketeachers-inteli-"), "poketeachers-inteli-4827");
+});
+
+test("sala: teclado numérico digita até 4, apaga o último; mostra o que falta", () => {
+  let code = "";
+  for (const key of ["4", "8", "2", "7", "9"]) code = typeRoomKey(code, key, 4);
+  assert.equal(code, "4827"); // o 5º dígito é ignorado
+  code = typeRoomKey(code, "delete", 4);
+  assert.equal(code, "482");
+  assert.equal(typeRoomKey("", "delete", 4), "");
+  assert.equal(typeRoomKey("4", "enter", 4), "4");
+  assert.equal(displayRoomCode("48", 4), "4 8 _ _");
+});
+
+test("sala: só aceita o hello da mesma versão do protocolo", () => {
+  assert.equal(isCompatibleHello({ type: "hello", v: 1 }, 1), true);
+  assert.equal(isCompatibleHello({ type: "hello", v: 2 }, 1), false);
+  assert.equal(isCompatibleHello({ type: "ping", v: 1 }, 1), false);
+  assert.equal(isCompatibleHello(null, 1), false);
 });

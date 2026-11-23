@@ -14,6 +14,7 @@ import "./systems/physics.js";
 import "./systems/input-mode.js";
 import "./systems/battle.js";
 import "./systems/game-flow.js";
+import "./systems/network.js";
 
 import "./components/physics/physics-body.js";
 

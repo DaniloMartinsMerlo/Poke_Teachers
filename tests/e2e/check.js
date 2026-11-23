@@ -62,9 +62,79 @@ async function run() {
   await pressMenu("back");
   await pressMenu("vs-player");
   out.versusScreen = [menuEl.dataset.screen, menuButtons().map((b) => `${b.dataset.option}:${b.dataset.soon}`)];
-  await pressMenu("create-room");
-  out.versusSoonStatus = menuEl.querySelector(".menu-status").getAttribute("value");
-  await pressMenu("back");
+
+  // Salas J1 x J2 com um transporte falso (sem internet): o teste faz o
+  // papel do outro aparelho.
+  class FakeTransport {
+    constructor() { this.listeners = new Map(); this.sent = []; FakeTransport.last = this; }
+    on(e, fn) { if (!this.listeners.has(e)) this.listeners.set(e, []); this.listeners.get(e).push(fn); }
+    emit(e, d) { (this.listeners.get(e) || []).forEach((fn) => fn(d)); }
+    host(code) { this.hostCode = code; return Promise.resolve(); }
+    join(code) {
+      this.joinCode = code;
+      const fail = (c) => Promise.reject(Object.assign(new Error(c), { code: c }));
+      if (code === "0000") return fail("not-found");
+      if (code === "1111") return fail("full");
+      return Promise.resolve().then(() => this.emit("connected"));
+    }
+    send(m) { this.sent.push({ v: 1, ...m }); return true; }
+    close() { this.closed = true; }
+  }
+  const net = scene.systems.network;
+  net.TransportClass = FakeTransport;
+  const menuStatus = () => menuEl.querySelector(".menu-status").getAttribute("value");
+  const roomCodeText = () => menuEl.querySelector(".menu-room-code").getAttribute("value");
+  const settle = async () => { for (let i = 0; i < 3; i++) await frame(); };
+  // Anfitrião: cria a sala, mostra o código, o J2 chega, trocam hello.
+  await pressMenu("create-room"); await settle();
+  const hostT = FakeTransport.last;
+  out.hosting = [menuEl.dataset.screen, roomCodeText(), menuStatus(), net.state];
+  out.hostingCodeShown = roomCodeText().replace(/ /g, "") === hostT.hostCode;
+  hostT.emit("connected"); await settle();
+  out.hostSentHello = hostT.sent.some((m) => m.type === "hello" && m.role === "host");
+  hostT.emit("message", { v: 1, type: "hello", role: "guest" }); await settle();
+  out.hostMatch = [flow.mode, flow.opponent, flow.role, net.state, menuEl.object3D.visible];
+  out.cpuIdleInOnlineMatch = cpuEl.dataset.cpuState;
+  // O J2 sai: volta ao menu com o aviso.
+  hostT.emit("closed"); await settle();
+  out.lostBackToMenu = [flow.isMenu(), menuEl.dataset.screen, menuStatus(), net.state];
+  // Cancelar a sala antes de alguém entrar.
+  await pressMenu("vs-player"); await pressMenu("create-room"); await settle();
+  await pressMenu("back"); await settle();
+  out.cancelHosting = [menuEl.dataset.screen, net.state, FakeTransport.last.closed === true];
+  // Convidado: teclado numérico, erros e entrada.
+  await pressMenu("join-room");
+  out.joinScreen = [menuEl.dataset.screen, menuButtons().map((b) => b.dataset.option).join(","), roomCodeText()];
+  const typeCode = async (digits) => { for (const d of digits) await pressMenu(d); };
+  await pressMenu("enter");
+  out.joinEmptyCode = menuStatus();
+  await typeCode("00000");
+  out.joinTyped = roomCodeText();
+  await pressMenu("enter"); await settle();
+  out.joinNotFound = [menuStatus(), net.state];
+  for (let i = 0; i < 4; i++) await pressMenu("delete");
+  out.joinAfterDelete = roomCodeText();
+  await typeCode("1111"); await pressMenu("enter"); await settle();
+  out.joinFull = menuStatus();
+  for (let i = 0; i < 4; i++) await pressMenu("delete");
+  await typeCode("4827"); await pressMenu("enter"); await settle();
+  // Outro aparelho com versão diferente do jogo.
+  FakeTransport.last.emit("message", { v: 2, type: "hello", role: "host" }); await settle();
+  out.joinVersionMismatch = [menuStatus(), net.state, flow.isMenu()];
+  await pressMenu("enter"); await settle();
+  const guestT = FakeTransport.last;
+  out.guestJoinedCode = guestT.joinCode;
+  guestT.emit("message", { v: 1, type: "hello", role: "host" }); await settle();
+  out.guestMatch = [flow.mode, flow.opponent, flow.role, net.state];
+  // Mensagens da partida (etapa 4) chegam como NETWORK_MESSAGE.
+  let netMessage = null;
+  scene.addEventListener("networkmessage", (e) => { netMessage = e.detail; }, { once: true });
+  guestT.emit("message", { v: 1, type: "turnAction", n: 1 }); await frame();
+  out.gameMessageForwarded = netMessage?.type;
+  // Voltar ao menu (botão "Menu") encerra a conexão e avisa o outro.
+  flow.openMenu(); await settle();
+  out.menuLeavesRoom = [net.state, guestT.sent.some((m) => m.type === "bye"), guestT.closed === true];
+  menuEl.components["main-menu"].showScreen("home"); await frame();
   await pressMenu("vs-cpu");
   out.matchStarted = [flow.mode, flow.opponent];
   out.menuHiddenInMatch = !menuEl.object3D.visible && menuButtons().length === 0;

@@ -139,6 +139,15 @@ apagado.
 - Fiz uma página de teste de conexão que já usa a mesma camada de rede do
   jogo, para descobrir cedo se a rede da faculdade permite a conexão direta
   entre os aparelhos, antes de construir as salas.
+- O teste mostrou que **a rede da faculdade bloqueia a conexão direta**, e no
+  meu roteador de casa funciona. Decidi seguir com a conexão direta e validar
+  em casa, deixando um plano B (servidor de retransmissão ou outro serviço)
+  para antes da apresentação.
+- Fiz as **salas dentro do jogo**: quem cria recebe um código de 4 dígitos, e
+  quem entra digita num teclado numérico 3D. Antes de começar, os dois
+  aparelhos conferem se estão com a mesma versão do jogo, porque um pode estar
+  no GitHub Pages e o outro no meu computador. Se um sair, o outro volta ao
+  menu com um aviso.
 
 **O que aprendi:**
 
@@ -160,10 +169,10 @@ apagado.
 
 ## Próximos passos
 
-1. Testar a conexão entre o PC e o Quest na rede onde vamos apresentar, com a
-   página de teste, antes de construir o modo online. Se o P2P for bloqueado, trocar por um serviço como
-   o Supabase Realtime.
-2. Salas: criar e entrar com o código de 4 dígitos, com teclado numérico 3D.
-3. Sincronizar a batalha e os arremessos entre os dois headsets.
-4. Validar no Quest 3 a tela inicial, a precisão e o PP, e a troca gastando o
-   turno.
+1. Sincronizar a batalha entre os dois aparelhos: quem cria a sala calcula os
+   turnos e o outro só mostra o resultado; o J2 fica do outro lado do campo.
+2. Sincronizar os arremessos das pokébolas.
+3. Resolver a rede da faculdade (que bloqueia a conexão direta) antes da
+   apresentação.
+4. Validar no Quest 3 as salas, a tela inicial, a precisão e o PP, e a troca
+   gastando o turno.

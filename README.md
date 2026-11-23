@@ -157,7 +157,7 @@ Quando o jogador alterna entre as mãos e os controles, o jogo detecta a mudanç
 O jogo abre com um painel à sua frente:
 
 - **J1 x COMP**: começa a partida contra o computador.
-- **J1 x J2**: partida online entre dois headsets, com código de sala (em breve).
+- **J1 x J2**: partida online entre dois aparelhos (PC ou Quest). Um toca em **Criar sala** e passa o código de 4 dígitos; o outro toca em **Entrar** e digita o código. A rede precisa permitir conexão direta entre os aparelhos (a da faculdade bloqueia; em casa funciona). A sincronização da batalha ainda está em construção.
 - **Creditos**.
 
 Aponte (laser ou mouse) e clique, ou encoste a pinça no botão. No fim da partida, **Menu** volta para esta tela.

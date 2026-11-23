@@ -24,3 +24,28 @@ export function isValidRoomCode(code, length) {
 export function roomPeerId(code, prefix) {
   return `${prefix}${code}`;
 }
+
+/**
+ * Tecla do teclado numérico: um dígito acrescenta (até `length`),
+ * "delete" apaga o último. Retorna o código digitado novo.
+ */
+export function typeRoomKey(current, key, length) {
+  if (key === "delete") {
+    return current.slice(0, -1);
+  }
+  if (/^\d$/.test(key) && current.length < length) {
+    return current + key;
+  }
+  return current;
+}
+
+/** Código digitado para mostrar: dígitos e "_" no que falta ("48__"). */
+export function displayRoomCode(current, length) {
+  return current.padEnd(length, "_").split("").join(" ");
+}
+
+/** O "hello" do outro lado é compatível (mesma versão do protocolo)? */
+export function isCompatibleHello(message, version) {
+  return message?.type === "hello" && message.v === version;
+}
+

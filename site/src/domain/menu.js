@@ -1,31 +1,46 @@
 // Navegação da tela inicial, sem A-Frame.
-import { MENU_ACTIONS as ACTIONS, MENU_SCREENS as SCREENS, OPPONENTS } from "../config/menu.js";
+import {
+  MENU_ACTIONS as ACTIONS, MENU_BACK, MENU_SCREENS as SCREENS, OPPONENTS,
+} from "../config/menu.js";
 
 /**
  * Resultado de escolher uma opção do menu.
  * @param {string} screen tela atual (MENU_SCREENS)
  * @param {{action: string, soon?: boolean}} option botão escolhido
- * @returns {{screen: string, start: string | null, notice: string | null}}
+ * @returns {{screen: string, start: string | null, notice: string | null, network: string | null}}
  *   tela seguinte; `start`: adversário da partida a abrir (OPPONENTS), se
- *   houver; `notice`: "soon" para opções que ainda não existem.
+ *   houver; `notice`: "soon" para opções que ainda não existem;
+ *   `network`: o que pedir ao sistema de rede — "create" (criar sala),
+ *   "join" (entrar com o código digitado), "leave" (cancelar/sair).
  */
 export function chooseMenuOption(screen, option) {
-  const stay = { screen, start: null, notice: null };
+  const stay = { screen, start: null, notice: null, network: null };
   if (option.soon) {
     return { ...stay, notice: "soon" };
   }
   if (option.action === ACTIONS.BACK) {
-    return { ...stay, screen: SCREENS.HOME };
+    const leaves = screen === SCREENS.HOSTING || screen === SCREENS.JOIN;
+    return { ...stay, screen: MENU_BACK[screen] || SCREENS.HOME, network: leaves ? "leave" : null };
   }
-  if (screen === SCREENS.HOME) {
-    switch (option.action) {
-      case ACTIONS.VS_CPU: return { ...stay, start: OPPONENTS.CPU };
-      case ACTIONS.VS_PLAYER: return { ...stay, screen: SCREENS.VERSUS };
-      case ACTIONS.CREDITS: return { ...stay, screen: SCREENS.CREDITS };
-      default: return stay;
-    }
+  switch (screen) {
+    case SCREENS.HOME:
+      switch (option.action) {
+        case ACTIONS.VS_CPU: return { ...stay, start: OPPONENTS.CPU };
+        case ACTIONS.VS_PLAYER: return { ...stay, screen: SCREENS.VERSUS };
+        case ACTIONS.CREDITS: return { ...stay, screen: SCREENS.CREDITS };
+        default: return stay;
+      }
+    case SCREENS.VERSUS:
+      switch (option.action) {
+        case ACTIONS.CREATE_ROOM: return { ...stay, screen: SCREENS.HOSTING, network: "create" };
+        case ACTIONS.JOIN_ROOM: return { ...stay, screen: SCREENS.JOIN };
+        default: return stay;
+      }
+    case SCREENS.JOIN:
+      return option.action === ACTIONS.ENTER ? { ...stay, network: "join" } : stay;
+    default:
+      return stay;
   }
-  return stay;
 }
 
 /**

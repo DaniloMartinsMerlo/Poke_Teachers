@@ -554,3 +554,45 @@ professores.
 - Testar PC x Quest na rede do Inteli com `net-test.html` (A_FAZER).
 - Validar o mouse no navegador do PC.
 
+## 2026-11-23 — salas J1 x J2 (etapa 3)
+
+### Resultado da etapa 2
+- Teste com `net-test.html`: na rede da faculdade o **P2P é bloqueado**;
+  no roteador de casa conecta. Decisão do usuário: seguir com P2P e
+  validar em casa; plano B (TURN/Supabase/roteador próprio) antes da
+  apresentação (A_FAZER).
+
+### Mudanças
+- **Sistema `network`** (`systems/network.js`): `createRoom()` (sorteia o
+  código; em uso → outro, até 5 vezes), `joinRoom(code)`, `leave()` (manda
+  "bye"), `send(msg)`. Estados em `NETWORK_CHANGED` (idle, opening,
+  waiting, joining, handshake, ready) com o erro. Conectados, os dois
+  trocam `hello` com a versão do protocolo; iguais → `game-flow.startMatch
+  ("player", role)`. O outro sair na partida → `NETWORK_LOST` + menu com
+  "O adversario saiu da partida". Voltar ao menu encerra a conexão.
+  Outras mensagens → `NETWORK_MESSAGE` (etapa 4). `TransportClass`
+  trocável (o e2e usa um transporte falso, sem internet).
+- **Menu:** "Criar sala" → tela com o código grande, "Aguardando J2..." e
+  Cancelar; "Entrar" → código digitado ("4 8 _ _") + teclado 3 x 4 (0–9,
+  Apagar, Entrar) + Voltar, painel mais alto (1,02 m). Erros em vermelho
+  (`NETWORK_TEXTS` em `config/network.js`). Regras puras em
+  `domain/room.js` (`typeRoomKey`, `displayRoomCode`, `isCompatibleHello`)
+  e `domain/menu.js` (`chooseMenuOption` devolve `network`: create, join,
+  leave; `MENU_BACK`).
+- `game-flow` guarda `role` (host/guest); a CPU não joga em J1 x J2.
+- PeerJS 1.5.4 carregada no `index.html`.
+
+### Decisões e motivos
+- **Troca de "hello" com versão** antes de começar: Pages e Docker local
+  podem servir versões diferentes do jogo nos dois aparelhos; melhor
+  avisar do que dessincronizar.
+- **Aviso de saída no menu, não no HUD:** o jogo volta ao menu quando o
+  outro sai (não dá para continuar sozinho); o aviso fica guardado e
+  aparece quando o painel abre.
+- Etapa 3 só conecta e abre a partida nos dois: a batalha ainda roda
+  separada em cada aparelho (sincronizar = etapa 4).
+
+### Pendências
+- Etapa 4 (sincronizar a batalha, J2 do outro lado do campo). Validar as
+  salas PC x Quest em casa.
+

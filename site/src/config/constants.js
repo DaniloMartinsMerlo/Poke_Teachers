@@ -70,8 +70,15 @@ export const EVENTS = Object.freeze({
   TURN_RESOLVED: "turnresolved",
   // Alguém perdeu todos os PokeProfs (detail: winner, loser).
   GAME_OVER: "gameover",
-  // Menu ↔ partida (sistema "game-flow"; detail: mode, opponent).
+  // Menu ↔ partida (sistema "game-flow"; detail: mode, opponent, role).
   GAME_MODE_CHANGED: "gamemodechanged",
+  // Partida online (sistema "network"). Estado da conexão mudou (detail:
+  // state, role, code, error = código do erro ou null).
+  NETWORK_CHANGED: "networkchanged",
+  // Mensagem do outro aparelho (detail: a mensagem, sem o "hello").
+  NETWORK_MESSAGE: "networkmessage",
+  // O outro aparelho saiu no meio da partida.
+  NETWORK_LOST: "networklost",
 });
 
 // Quadros muito longos (aba em segundo plano) não podem gerar saltos.

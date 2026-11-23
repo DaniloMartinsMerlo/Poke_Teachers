@@ -21,3 +21,43 @@ export const ROOM = Object.freeze({
 
 // Versão do protocolo de mensagens: os dois lados precisam ser iguais.
 export const PROTOCOL_VERSION = 1;
+
+// Estados da conexão (sistema "network").
+export const NETWORK_STATES = Object.freeze({
+  IDLE: "idle",
+  // Anfitrião: abrindo a sala no servidor de encontro / aguardando o J2.
+  OPENING: "opening",
+  WAITING: "waiting",
+  // Convidado: conectando na sala.
+  JOINING: "joining",
+  // Conectados, trocando "hello" (confere a versão do jogo).
+  HANDSHAKE: "handshake",
+  // Partida J1 x J2 em andamento.
+  READY: "ready",
+});
+
+// Quem é quem: o anfitrião (cria a sala) é o J1 e calcula a batalha.
+export const NETWORK_ROLES = Object.freeze({ HOST: "host", GUEST: "guest" });
+
+// Código em uso no servidor: tenta outro, até este número de vezes.
+export const ROOM_CREATE_ATTEMPTS = 5;
+
+// Textos do menu (sem acento: fonte do A-Frame).
+export const NETWORK_TEXTS = Object.freeze({
+  opening: "Abrindo sala...",
+  waiting: "Aguardando J2...",
+  joining: "Entrando na sala...",
+  handshake: "Conectado! Preparando a partida...",
+  typeCode: "Digite os 4 digitos",
+  errors: Object.freeze({
+    "room-taken": "Nao consegui criar a sala. Tente de novo",
+    "not-found": "Sala nao encontrada",
+    full: "Sala cheia",
+    timeout: "Tempo esgotado. Confira o codigo",
+    network: "Sem conexao com a internet",
+    version: "Versao do jogo diferente no outro aparelho",
+    "no-peerjs": "Biblioteca de rede nao carregou",
+    lost: "O adversario saiu da partida",
+  }),
+});
+

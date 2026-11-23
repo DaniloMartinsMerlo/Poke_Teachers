@@ -43,13 +43,22 @@ export function panelPlacement(head, yaw, distance, drop, minHeight = -Infinity)
 }
 
 /**
- * Ao entrar/sair do VR, já dá para posicionar o painel? Espera um pouco
- * (`delayMs`) e a cabeça estar acima de `readyHeight` (o headset ainda
- * não mandou a posição); depois de `timeoutMs`, posiciona assim mesmo.
+ * O painel deve ser reposicionado à frente da cabeça neste quadro?
+ * - Logo depois de entrar/sair do VR (`sinceViewMs` < `followMs`): sim, a
+ *   cada quadro, desde que a cabeça já tenha posição (acima de
+ *   `headReadyHeight`) — vale a última posição que o headset mandar.
+ * - Sempre: se o painel ficou longe (> `maxDistance`) ou bem abaixo da
+ *   cabeça (> `maxBelow`).
+ * @param {{x:number,y:number,z:number}} head
+ * @param {{x:number,y:number,z:number}} panel
+ * @param {number | null} sinceViewMs ms desde entrar/sair do VR (null: faz tempo)
  */
-export function canPlacePanel(elapsedMs, headY, { placeDelayMs, placeTimeoutMs, headReadyHeight }) {
-  if (elapsedMs < placeDelayMs) return false;
-  return headY >= headReadyHeight || elapsedMs >= placeTimeoutMs;
+export function shouldReplacePanel(head, panel, sinceViewMs, rules) {
+  if (sinceViewMs !== null && sinceViewMs < rules.followMs && head.y >= rules.headReadyHeight) {
+    return true;
+  }
+  const distance = Math.hypot(head.x - panel.x, head.y - panel.y, head.z - panel.z);
+  return distance > rules.maxDistance || panel.y < head.y - rules.maxBelow;
 }
 
 /**

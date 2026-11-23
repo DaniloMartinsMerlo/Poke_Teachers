@@ -52,15 +52,19 @@ export const CREDITS_TEACHER = "Murilo";
 
 // Painel (m): à frente da cabeça, um pouco abaixo dos olhos.
 //   minHeight: o centro nunca fica abaixo disto (cabeça ainda sem posição).
-//   headReadyHeight: ao entrar no VR, a cabeça só conta como "rastreada"
-//     acima desta altura; espera até placeTimeoutMs e posiciona assim mesmo.
+//   Ao entrar/sair do VR o headset corrige a posição da cabeça nos
+//   primeiros quadros: durante followMs o painel acompanha a cabeça a cada
+//   quadro (só com ela acima de headReadyHeight). Depois, se ficar a mais
+//   de maxDistance da cabeça ou mais de maxBelow abaixo dela, volta para a
+//   frente dela.
 export const MENU_LAYOUT = Object.freeze({
   distance: 1.4,
   drop: 0.15,
   minHeight: 0.9,
   headReadyHeight: 0.5,
-  placeDelayMs: 150,
-  placeTimeoutMs: 2000,
+  followMs: 2500,
+  maxDistance: 3,
+  maxBelow: 1,
   width: 0.9,
   height: 0.8,
   button: Object.freeze({ width: 0.5, height: 0.1, gap: 0.03 }),

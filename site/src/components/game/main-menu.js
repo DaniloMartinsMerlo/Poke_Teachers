@@ -4,7 +4,7 @@ import {
   CREDITS_TEACHER, MENU_COLORS, MENU_LAYOUT, MENU_OPTIONS, MENU_SCREENS, MENU_TEXTS,
 } from "../../config/menu.js";
 import { teacherImage } from "../../config/teachers.js";
-import { canPlacePanel, chooseMenuOption, panelPlacement, stackPositions } from "../../domain/menu.js";
+import { chooseMenuOption, panelPlacement, shouldReplacePanel, stackPositions } from "../../domain/menu.js";
 import { createEntity, vec3, whenSceneLoaded } from "../../utils/entity.js";
 import { buttonAtPoint, pinchWorldPoint } from "../../utils/pinch.js";
 
@@ -17,11 +17,11 @@ import { buttonAtPoint, pinchWorldPoint } from "../../utils/pinch.js";
 // Botões como os do HUD: mouse (olhar + clique), laser do controle ou
 // pinça da mão rastreada encostada no botão.
 //
-// O painel aparece na frente de onde a cabeça olha ao abrir o menu (e ao
-// entrar/sair do VR, quando a cabeça "pula"); fica parado no mundo. Ao
-// entrar no VR, espera o headset mandar a posição da cabeça antes de
-// reposicionar (logo no início a câmera está na altura 0 e o painel iria
-// para baixo do chão). Fora
+// O painel aparece na frente de onde a cabeça olha ao abrir o menu e fica
+// parado no mundo. Ao entrar/sair do VR o headset corrige a posição da
+// cabeça nos primeiros quadros (no início a câmera pode estar na altura 0):
+// por 2,5 s o painel acompanha a cabeça a cada quadro; depois, se ficar
+// longe ou abaixo dela, volta para a frente dela. Fora
 // do menu ele some e fica sem botões, para nenhum raio acertá-lo.
 // Uma entidade na cena basta: <a-entity main-menu>.
 AFRAME.registerComponent("main-menu", {
@@ -34,10 +34,10 @@ AFRAME.registerComponent("main-menu", {
     this.build();
 
     this.onModeChanged = () => this.refresh();
-    // Entrou/saiu do VR: reposiciona quando a cabeça tiver posição (tick).
-    this.pendingPlaceMs = null;
+    // Entrou/saiu do VR: acompanha a cabeça por um tempo (tick).
+    this.sinceViewMs = null;
     this.onViewChanged = () => {
-      this.pendingPlaceMs = 0;
+      this.sinceViewMs = 0;
     };
     this.onPinch = (event) => this.pressAtPinch(event);
     const sceneEl = this.el.sceneEl;
@@ -199,14 +199,20 @@ AFRAME.registerComponent("main-menu", {
     }
   },
 
+  // Reposiciona logo depois de entrar/sair do VR e sempre que o painel
+  // ficar longe ou abaixo da cabeça (ver shouldReplacePanel).
   tick(time, delta) {
-    if (this.pendingPlaceMs === null || !this.isOpen() || !this.el.sceneEl.camera) {
+    if (!this.isOpen() || !this.el.sceneEl.camera) {
       return;
     }
-    this.pendingPlaceMs += Math.min(delta || 0, MAX_FRAME_MS);
+    if (this.sinceViewMs !== null) {
+      this.sinceViewMs += Math.min(delta || 0, MAX_FRAME_MS);
+      if (this.sinceViewMs >= MENU_LAYOUT.followMs) {
+        this.sinceViewMs = null;
+      }
+    }
     this.el.sceneEl.camera.getWorldPosition(this.head);
-    if (canPlacePanel(this.pendingPlaceMs, this.head.y, MENU_LAYOUT)) {
-      this.pendingPlaceMs = null;
+    if (shouldReplacePanel(this.head, this.el.object3D.position, this.sinceViewMs, MENU_LAYOUT)) {
       this.place();
     }
   },

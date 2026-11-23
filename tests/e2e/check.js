@@ -44,6 +44,15 @@ async function run() {
   cam.position.y = 1.7;
   for (let i = 0; i < 5; i++) await frame();
   out.menuYAfterHeadTracked = +menuEl.object3D.position.y.toFixed(2);
+  // O headset corrige a cabeça de novo logo depois: o painel acompanha.
+  cam.position.y = 1.2;
+  for (let i = 0; i < 5; i++) await frame();
+  out.menuYAfterHeadCorrected = +menuEl.object3D.position.y.toFixed(2);
+  // Painel abaixo do chão por qualquer motivo: volta para a frente.
+  for (let i = 0; i < 200; i++) await frame(); // passa o tempo de acompanhar
+  menuEl.object3D.position.y = -0.5;
+  await frame();
+  out.menuYRecoveredFromBelow = +menuEl.object3D.position.y.toFixed(2);
   cam.position.y = camY;
   scene.emit("exit-vr");
   for (let i = 0; i < 20; i++) await frame();

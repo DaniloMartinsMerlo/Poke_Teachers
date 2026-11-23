@@ -505,9 +505,13 @@ professores.
 ### Ajuste no mesmo dia — menu abaixo do chão ao entrar no VR; aba "PokeProf"
 - No Quest, ao apertar VR o painel ia para baixo do chão: era
   reposicionado logo no `enter-vr`, quando a câmera ainda está na altura 0
-  (o headset só manda a posição da cabeça nos quadros seguintes). Agora o
-  `main-menu` espera no `tick` a cabeça passar de 0,5 m (no mínimo 150 ms,
-  desiste em 2 s) antes de reposicionar, e o centro do painel nunca fica
-  abaixo de 0,9 m (`canPlacePanel`, `minHeight` em `config/menu.js`).
+  (o headset só manda a posição da cabeça nos quadros seguintes). 1ª
+  tentativa (esperar a cabeça passar de 0,5 m e posicionar uma vez) não
+  resolveu no Quest. Agora o `main-menu` acompanha a cabeça a cada quadro
+  por 2,5 s depois de entrar/sair do VR (vale a última posição do headset)
+  e, depois disso, volta para a frente da cabeça se ficar a mais de 3 m
+  dela ou mais de 1 m abaixo (`shouldReplacePanel`); o centro nunca fica
+  abaixo de 0,9 m (`minHeight` em `config/menu.js`). Mesmo princípio do
+  HUD, que relê a cabeça a cada quadro e funciona no Quest.
 - Título da aba do navegador: "PokeProf".
 

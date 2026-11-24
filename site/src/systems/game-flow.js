@@ -1,6 +1,7 @@
 import { EVENTS } from "../config/constants.js";
 import { HUD_ACTIONS } from "../config/hud.js";
-import { GAME_MODES } from "../config/menu.js";
+import { GAME_MODES, OPPONENTS } from "../config/menu.js";
+import { NETWORK_ROLES } from "../config/network.js";
 
 // ----------------------------------------------------------------------
 // Sistema "game-flow": em que parte do jogo estamos.
@@ -20,6 +21,7 @@ AFRAME.registerSystem("game-flow", {
     this.mode = GAME_MODES.MENU;
     this.opponent = null;
     this.role = null;
+    this.switchingMode = false;
     this.onHudAction = ({ detail }) => {
       if (detail.action === HUD_ACTIONS.MENU) {
         this.openMenu();
@@ -37,6 +39,26 @@ AFRAME.registerSystem("game-flow", {
     return this.mode === GAME_MODES.MATCH && this.opponent === opponent;
   },
 
+  /** Partida online J1 x J2 em andamento? */
+  isOnline() {
+    return this.isPlayingAgainst(OPPONENTS.PLAYER);
+  },
+
+  /** Anfitrião (J1, autoridade da batalha) na partida online? */
+  isHost() {
+    return this.isOnline() && this.role === NETWORK_ROLES.HOST;
+  },
+
+  /** Convidado (J2, lado oposto da arena) na partida online? */
+  isGuest() {
+    return this.isOnline() && this.role === NETWORK_ROLES.GUEST;
+  },
+
+  /** Qual jogador este aparelho controla ("p2" no convidado; "p1" nos demais). */
+  localPlayer() {
+    return this.isGuest() ? "p2" : "p1";
+  },
+
   /**
    * Abre uma partida contra `opponent` (OPPONENTS). J1 x J2 online:
    * `role` = "host" (anfitrião, J1) ou "guest" (convidado, J2).
@@ -50,7 +72,9 @@ AFRAME.registerSystem("game-flow", {
   },
 
   setMode(mode, opponent, role) {
+    this.switchingMode = true;
     this.el.emit(EVENTS.GAME_RESET, null, false);
+    this.switchingMode = false;
     this.mode = mode;
     this.opponent = opponent;
     this.role = role;

@@ -230,6 +230,9 @@ AFRAME.registerComponent("ball-rack", {
 
   advanceFlights(delta) {
     this.flights = this.flights.filter((flight) => {
+      if (!flight.ball.hasAttribute(RETURNING_ATTRIBUTE)) {
+        return false;
+      }
       if (flight.wait > 0) {
         flight.wait -= delta;
         return true;

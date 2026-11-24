@@ -39,6 +39,28 @@ export const NETWORK_STATES = Object.freeze({
 // Quem é quem: o anfitrião (cria a sala) é o J1 e calcula a batalha.
 export const NETWORK_ROLES = Object.freeze({ HOST: "host", GUEST: "guest" });
 
+// Tipos de mensagem trocados na partida online (etapa 4).
+export const MESSAGE_TYPES = Object.freeze({
+  HELLO: "hello",
+  BYE: "bye",
+  PING: "ping",
+  // Arremesso de pokébola (quem jogou, índice da bola, posição e velocidade).
+  THROW: "throw",
+  // J2 → J1: ações do convidado no HUD / campo.
+  CHOOSE: "choose",
+  RECALL: "recall",
+  PLAY_AGAIN: "playAgain",
+  // J1 → J2: eventos da batalha decididos pelo anfitrião.
+  RELEASED: "released",
+  RECALLED: "recalled",
+  BLOCKED: "blocked",
+  TURN_STARTED: "turnStarted",
+  TURN_ACTION: "turnAction",
+  TURN_RESOLVED: "turnResolved",
+  GAME_OVER: "gameOver",
+  RESET: "reset",
+});
+
 // Código em uso no servidor: tenta outro, até este número de vezes.
 export const ROOM_CREATE_ATTEMPTS = 5;
 

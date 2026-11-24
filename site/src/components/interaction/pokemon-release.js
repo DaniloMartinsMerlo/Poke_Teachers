@@ -47,12 +47,22 @@ AFRAME.registerComponent("pokemon-release", {
     this.leaving = new Set();
     this.ballPosition = new THREE.Vector3();
     this.cameraPosition = new THREE.Vector3();
+    this.thrownByHand = false;
+    this.onThrown = ({ detail }) => {
+      if (detail.ball === this.el) {
+        this.thrownByHand = true;
+      }
+    };
     this.onLanded = (event) => {
       if (releasesPokemon(event.detail.surface, RELEASE_SURFACE)) {
         this.release();
       }
     };
-    this.onTakeOff = () => this.recall();
+    this.onTakeOff = () => {
+      this.thrownByHand = false;
+      this.recall();
+    };
+    this.el.sceneEl.addEventListener(EVENTS.BALL_THROWN, this.onThrown);
     this.el.addEventListener(EVENTS.BALL_LANDED, this.onLanded);
     this.el.addEventListener(EVENTS.BALL_TAKEOFF, this.onTakeOff);
   },
@@ -62,11 +72,25 @@ AFRAME.registerComponent("pokemon-release", {
       return;
     }
     this.el.object3D.getWorldPosition(this.ballPosition);
+    const sceneEl = this.el.sceneEl;
+    const { player } = this.data;
+    // No convidado (J2), quem decide se e onde o PokeProf sai é o anfitrião.
+    // Se a bola do J2 pousou sem ter passado por BALL_THROWN (ex.: solta em
+    // teste), avisa o anfitrião como arremesso naquele ponto.
+    if (sceneEl.systems["game-flow"]?.isGuest()) {
+      if (player === "p2" && !this.thrownByHand) {
+        this.thrownByHand = true;
+        sceneEl.emit(EVENTS.BALL_THROWN, {
+          player, ball: this.el,
+          from: { x: this.ballPosition.x, y: this.ballPosition.y, z: this.ballPosition.z },
+          velocity: { x: 0, y: -1, z: 0 },
+        }, false);
+      }
+      return;
+    }
     if (isOutsideArena(this.ballPosition, ARENA_BOUNDS)) {
       return;
     }
-    const sceneEl = this.el.sceneEl;
-    const { player } = this.data;
     const blockedBy = this.el.components.pokeprof?.prof.isFainted()
       ? "fainted"
       : !sceneEl.systems.battle.canSendOut(player, this.el) && "one-at-a-time";
@@ -74,14 +98,23 @@ AFRAME.registerComponent("pokemon-release", {
       sceneEl.emit(EVENTS.SEND_OUT_BLOCKED, { player, ball: this.el, reason: blockedBy }, false);
       return;
     }
-    const { facing } = this.data;
+    this.releaseAt(this.ballPosition);
+  },
+
+  /** Faz o PokeProf sair em `ballPosition` (decidido pelo anfitrião). */
+  releaseAt(ballPosition) {
+    if (this.creature) {
+      return;
+    }
+    const sceneEl = this.el.sceneEl;
+    const { facing, player } = this.data;
 
     // Vira para o adversário e fica um pouco à frente da bola.
     const yaw = Math.atan2(
-      facing.x - this.ballPosition.x,
-      facing.z - this.ballPosition.z);
-    const x = this.ballPosition.x + Math.sin(yaw) * this.data.offset;
-    const z = this.ballPosition.z + Math.cos(yaw) * this.data.offset;
+      facing.x - ballPosition.x,
+      facing.z - ballPosition.z);
+    const x = ballPosition.x + Math.sin(yaw) * this.data.offset;
+    const z = ballPosition.z + Math.cos(yaw) * this.data.offset;
 
     const look = pickByName(this.data.name, POKEMON_LOOKS, TEACHER_NAMES);
     const owner = playerInfo(player);
@@ -120,7 +153,10 @@ AFRAME.registerComponent("pokemon-release", {
     const flash = this.creature.lastChild;
     flash.addEventListener("animationcomplete__fade", () => flash.remove(), { once: true });
     sceneEl.appendChild(this.creature);
-    sceneEl.emit(EVENTS.POKEMON_RELEASED, { player, ball: this.el, creature: this.creature }, false);
+    sceneEl.emit(EVENTS.POKEMON_RELEASED, {
+      player, ball: this.el, creature: this.creature,
+      position: { x: ballPosition.x, y: ballPosition.y, z: ballPosition.z },
+    }, false);
   },
 
   // Plaquinha "J1 Nome" na cor do dono, sempre virada para a câmera.
@@ -172,10 +208,13 @@ AFRAME.registerComponent("pokemon-release", {
     } else {
       creature.remove();
     }
-    this.el.sceneEl.emit(EVENTS.POKEMON_RECALLED, { player: this.data.player, ball: this.el }, false);
+    this.el.sceneEl.emit(EVENTS.POKEMON_RECALLED, {
+      player: this.data.player, ball: this.el, animated: Boolean(animated),
+    }, false);
   },
 
   remove() {
+    this.el.sceneEl.removeEventListener(EVENTS.BALL_THROWN, this.onThrown);
     this.el.removeEventListener(EVENTS.BALL_LANDED, this.onLanded);
     this.el.removeEventListener(EVENTS.BALL_TAKEOFF, this.onTakeOff);
     this.recall();

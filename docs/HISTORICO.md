@@ -596,3 +596,48 @@ professores.
 - Etapa 4 (sincronizar a batalha, J2 do outro lado do campo). Validar as
   salas PC x Quest em casa.
 
+## 2026-11-24 — sincronização da batalha J1 x J2 (etapa 4)
+
+### Mudanças
+- **Protocolo da batalha** (`domain/protocol.js`, `MESSAGE_TYPES` em
+  `config/network.js`): montagem e validação das mensagens entre J1 e J2
+  (`throw`, `choose`, `recall`, `playAgain`, `released`, `recalled`,
+  `blocked`, `turnStarted`, `turnAction`, `turnResolved`, `gameOver`,
+  `reset`). `applyTurnAction` em `domain/turn.js` aplica no convidado o
+  resultado já calculado pelo anfitrião (mesmo dano, PP, cura e boost).
+- **Convidado (J2) do outro lado do campo:** `PLAYERS.p2.spawn` em
+  `z = -7` virado para `+z` (`yaw = π`); `player-rig` posiciona o rig no
+  box do jogador local (`game-flow.localPlayer()`) e zera `lastSafeHead` da
+  colisão; `battle-hud` troca para `player: p2` (faixa vermelha e título
+  "J2").
+- **Autoridade no anfitrião (`systems/battle.js`):** no convidado, escolher
+  ataque/power-up não inicia o turno localmente nem agenda fim de jogo —
+  `startRemoteTurn`, `applyRemoteAction`, `finishRemoteTurn` e
+  `applyRemoteGameOver` aplicam o que chega do J1.
+- **Componente `remote-player`** (`components/game/remote-player.js`, no
+  suporte do J2 ao lado do `cpu-player`): trava as bolas do adversário
+  (`data-no-grab`) nos dois aparelhos; no J1 recebe `throw`, `choose`,
+  `recall` e `playAgain` do J2 e transmite `released`, `recalled`,
+  `blocked`, `turnStarted`, `turnAction`, `turnResolved`, `gameOver` e
+  `reset`; no J2 envia as ações locais e aplica as mensagens do J1.
+- **Soltura autoritativa (`pokemon-release`, `physics-body`):**
+  `throwFromHand` emite `BALL_THROWN`; no convidado, `pokemon-release`
+  espera o `released` do anfitrião (`settleAt` + `releaseAt`) para os dois
+  lados verem o PokeProf na mesma posição.
+
+### Decisões e motivos
+- **Sem espelhar coordenadas:** cada jogador fica no seu lado real da
+  arena (`p1` em `+7` olhando `-z`, `p2` em `-7` olhando `+z`), então
+  posições de bolas e PokeProfs são trocadas direto em coordenadas de
+  mundo.
+- **J2 não sorteia acerto nem dano:** `applyTurnAction` usa os números
+  mandados pelo J1, evitando que um ataque acerte num aparelho e erre no
+  outro.
+- **`settleAt` ao pousar bola remota:** mantém `landedOn = "ground"` para
+  que pegar a bola do campo depois continue disparando `BALL_TAKEOFF` e
+  recolhendo o PokeProf.
+
+### Pendências
+- Validar partida completa PC x Quest 3 em casa (arremesso, turnos, troca,
+  fim de jogo e jogar de novo).
+

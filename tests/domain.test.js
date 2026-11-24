@@ -665,3 +665,94 @@ test("sala: só aceita o hello da mesma versão do protocolo", () => {
   assert.equal(isCompatibleHello({ type: "ping", v: 1 }, 1), false);
   assert.equal(isCompatibleHello(null, 1), false);
 });
+
+// --------------------------------------------------- protocolo de batalha
+import { applyTurnAction } from "../site/src/domain/turn.js";
+import {
+  buildBlockedMessage,
+  buildChooseMessage,
+  buildGameOverMessage,
+  buildPlayAgainMessage,
+  buildRecallMessage,
+  buildRecalledMessage,
+  buildReleasedMessage,
+  buildResetMessage,
+  buildThrowMessage,
+  buildTurnActionMessage,
+  buildTurnResolvedMessage,
+  buildTurnStartedMessage,
+  isValidBattleMessage,
+} from "../site/src/domain/protocol.js";
+
+test("protocolo: monta e valida mensagens da batalha J1 x J2", () => {
+  const throwMsg = buildThrowMessage("p2", 1, { x: -0.6, y: 1.2345, z: -7 }, { x: 0, y: 2, z: 5 });
+  assert.deepEqual(throwMsg, {
+    type: "throw", player: "p2", ball: 1,
+    from: { x: -0.6, y: 1.235, z: -7 }, velocity: { x: 0, y: 2, z: 5 },
+  });
+  assert.ok(isValidBattleMessage(throwMsg));
+  assert.ok(isValidBattleMessage(buildChooseMessage({ kind: "attack", id: "chamada-oral" })));
+  assert.ok(isValidBattleMessage(buildRecallMessage()));
+  assert.ok(isValidBattleMessage(buildPlayAgainMessage()));
+  assert.ok(isValidBattleMessage(buildReleasedMessage("p1", 0, { x: 0, y: 0.088, z: 4 })));
+  assert.ok(isValidBattleMessage(buildRecalledMessage("p1", 0, true)));
+  assert.ok(isValidBattleMessage(buildBlockedMessage("p2", 2, "fainted")));
+  assert.ok(isValidBattleMessage(buildTurnStartedMessage(["p2", "p1"])));
+  assert.ok(isValidBattleMessage(buildTurnResolvedMessage()));
+  assert.ok(isValidBattleMessage(buildGameOverMessage("p1", "p2")));
+  assert.ok(isValidBattleMessage(buildResetMessage()));
+
+  // Mensagens inválidas ou incompletas são recusadas.
+  assert.equal(isValidBattleMessage(null), false);
+  assert.equal(isValidBattleMessage({ type: "choose", kind: "attack", id: "" }), false);
+  assert.equal(isValidBattleMessage({ type: "throw", ball: -1, from: { x: 0, y: 0, z: 0 }, velocity: { x: 0, y: 0, z: 0 } }), false);
+  assert.equal(isValidBattleMessage({ type: "turnAction", n: 1 }), false);
+  assert.equal(isValidBattleMessage({ type: "released", player: "p3", ball: 0, pos: { x: 0, y: 0, z: 0 } }), false);
+});
+
+test("protocolo: ação calculada no anfitrião reproduz o mesmo estado no convidado", () => {
+  const hostP1 = prof("Fabi");
+  const hostP2 = prof("Rodinha");
+  const guestP1 = prof("Fabi");
+  const guestP2 = prof("Rodinha");
+
+  // Ataque com acerto: mesmo dano e mesmo PP gasto no convidado.
+  const hitDetail = {
+    ...performAction(attack("p1", hostP1, "prova-surpresa"), side("p2", hostP2), RULES, HIT),
+    actorName: "Fabi", targetName: "Rodinha",
+  };
+  const hitMsg = buildTurnActionMessage(hitDetail);
+  assert.ok(isValidBattleMessage(hitMsg));
+  const appliedHit = applyTurnAction(hitMsg, guestP1, guestP2, RULES);
+  assert.equal(guestP2.hp, hostP2.hp);
+  assert.equal(guestP1.ppLeft(ATTACKS[0]), hostP1.ppLeft(ATTACKS[0]));
+  assert.equal(appliedHit.damage, hitDetail.damage);
+
+  // Ataque que errou: gasta PP no convidado, mas não tira vida.
+  const missDetail = {
+    ...performAction(attack("p2", hostP2, "reprovacao"), side("p1", hostP1), RULES, MISS),
+    actorName: "Rodinha", targetName: "Fabi",
+  };
+  const appliedMiss = applyTurnAction(buildTurnActionMessage(missDetail), guestP2, guestP1, RULES);
+  assert.equal(appliedMiss.missed, true);
+  assert.equal(guestP1.hp, hostP1.hp);
+  const reprovar = ATTACKS.find((a) => a.id === "reprovacao");
+  assert.equal(guestP2.ppLeft(reprovar), hostP2.ppLeft(reprovar));
+
+  // Power-up de atributo e de cura.
+  const boostDetail = {
+    ...performAction(powerup("p1", hostP1, "feriado"), side("p2", hostP2), RULES, HIT),
+    actorName: "Fabi", targetName: "Rodinha",
+  };
+  applyTurnAction(buildTurnActionMessage(boostDetail), guestP1, guestP2, RULES);
+  hostP1.endTurn();
+  guestP1.endTurn();
+  assert.deepEqual(guestP1.effectiveStats(), hostP1.effectiveStats());
+
+  const healDetail = {
+    ...performAction(powerup("p2", hostP2, "intervalo"), side("p1", hostP1), RULES, HIT),
+    actorName: "Rodinha", targetName: "Fabi",
+  };
+  applyTurnAction(buildTurnActionMessage(healDetail), guestP2, guestP1, RULES);
+  assert.equal(guestP2.hp, hostP2.hp);
+});

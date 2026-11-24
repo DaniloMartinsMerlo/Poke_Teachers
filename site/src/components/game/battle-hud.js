@@ -104,9 +104,11 @@ AFRAME.registerComponent("battle-hud", {
     this.build();
     this.showPage(HUD_PAGES.MAIN);
     this.onModeChanged = () => {
-      this.hidden = this.el.sceneEl.systems["game-flow"].isMenu();
+      const flow = this.el.sceneEl.systems["game-flow"];
+      this.hidden = flow.isMenu();
       this.el.object3D.visible = !this.hidden;
       this.anchor = null;
+      this.setPlayer(flow.localPlayer());
       this.showPage(HUD_PAGES.MAIN);
     };
     this.el.sceneEl.addEventListener(EVENTS.GAME_MODE_CHANGED, this.onModeChanged);
@@ -211,6 +213,19 @@ AFRAME.registerComponent("battle-hud", {
     this.el.classList.add("battle-hud");
     [this.panel, this.stripe, this.title, this.list, this.status, this.buildLog()]
       .forEach((child) => this.el.appendChild(child));
+  },
+
+  update() {
+    if (this.stripe) {
+      this.stripe.setAttribute("material", "color", playerInfo(this.data.player).color);
+    }
+  },
+
+  setPlayer(player) {
+    if (this.data.player !== player) {
+      this.el.setAttribute("battle-hud", "player", player);
+    }
+    this.stripe?.setAttribute("material", "color", playerInfo(player).color);
   },
 
   // Registro de batalha à direita do painel: "Turno N" e cada ação, na

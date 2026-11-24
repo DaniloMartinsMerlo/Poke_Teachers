@@ -48,10 +48,9 @@
       <a-entity main-menu></a-entity>
       <!-- Balões sobre os PokeProfs no campo a cada ação do turno. -->
       <a-entity battle-callouts></a-entity>
-      <!-- Adversário computador (do outro lado do campo, olhando para +z):
-           "cpu-player" joga com as bolas deste suporte (só no modo
-           J1 x COMP). -->
-      <a-entity ball-rack="player: p2; pokemon: Rodinha, Murilo, Fabi" cpu-player position="-0.6 0 -7" rotation="0 -90 0"></a-entity>
+      <!-- Adversário (do outro lado do campo, olhando para +z): "cpu-player"
+           joga no modo J1 x COMP; "remote-player" sincroniza o modo J1 x J2. -->
+      <a-entity ball-rack="player: p2; pokemon: Rodinha, Murilo, Fabi" cpu-player remote-player position="-0.6 0 -7" rotation="0 -90 0"></a-entity>
 
 
       <!-- JOGADOR

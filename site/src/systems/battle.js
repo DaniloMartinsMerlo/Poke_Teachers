@@ -7,7 +7,7 @@ import { PLAYER_IDS } from "../config/players.js";
 import { TYPE_BEATS } from "../config/teachers.js";
 import { canSendOut } from "../domain/battle.js";
 import {
-  ACTION_KINDS, SWITCH_CHOICE, TurnChoices, finishTurn, isTeamDefeated, performAction, planTurn,
+  ACTION_KINDS, SWITCH_CHOICE, TurnChoices, applyTurnAction, finishTurn, isTeamDefeated, performAction, planTurn,
 } from "../domain/turn.js";
 
 const TURN_RULES = Object.freeze({
@@ -70,7 +70,7 @@ AFRAME.registerSystem("battle", {
     this.onHudAction = ({ detail }) => {
       if (detail.action === HUD_ACTIONS.ATTACK || detail.action === HUD_ACTIONS.POWERUP) {
         this.choose(detail.player, { kind: detail.action, id: detail.id });
-      } else if (detail.action === HUD_ACTIONS.PLAY_AGAIN) {
+      } else if (detail.action === HUD_ACTIONS.PLAY_AGAIN && !this.isGuest()) {
         this.el.emit(EVENTS.GAME_RESET, null, false);
       }
     };
@@ -91,6 +91,12 @@ AFRAME.registerSystem("battle", {
 
   opponentOf(player) {
     return PLAYER_IDS.find((id) => id !== player) || null;
+  },
+
+  // No convidado (J2), quem resolve os turnos e decide o fim de jogo é o
+  // anfitrião (J1).
+  isGuest() {
+    return Boolean(this.el.systems["game-flow"]?.isGuest());
   },
 
   /** PokeProf (componente) em campo do jogador, ou null. */
@@ -192,9 +198,9 @@ AFRAME.registerSystem("battle", {
   },
 
   // Começa o turno quando os dois escolheram e estão em campo (quem trocou
-  // precisa ter lançado o novo PokeProf).
+  // precisa ter lançado o novo PokeProf). No convidado, espera o anfitrião.
   maybeStartTurn() {
-    if (!this.resolving && !this.result && this.choices.isReady(PLAYER_IDS) && this.bothOnField()) {
+    if (!this.isGuest() && !this.resolving && !this.result && this.choices.isReady(PLAYER_IDS) && this.bothOnField()) {
       this.startTurn();
     }
   },
@@ -209,6 +215,55 @@ AFRAME.registerSystem("battle", {
     this.resolving = { sides, steps: planTurn(sides), wait: TURN_START_DELAY };
     this.choices.clear();
     this.el.emit(EVENTS.TURN_STARTED, { order: this.resolving.steps.map(([actor]) => actor.player) }, false);
+    this.changed();
+  },
+
+  /** Convidado (J2): o anfitrião avisou que o turno começou a resolver. */
+  startRemoteTurn(order = []) {
+    const sides = PLAYER_IDS
+      .map((player) => ({ player, ball: this.activeBall(player), prof: this.activeProf(player)?.prof }))
+      .filter((side) => side.ball && side.prof);
+    this.resolving = { sides, steps: [], wait: Infinity, remote: true };
+    this.choices.clear();
+    this.el.emit(EVENTS.TURN_STARTED, { order }, false);
+    this.changed();
+  },
+
+  /** Convidado (J2): aplica uma ação de turno recebida do anfitrião. */
+  applyRemoteAction(action) {
+    const actorBall = this.activeBall(action.player);
+    const targetBall = this.activeBall(action.target);
+    const actorProf = actorBall?.components.pokeprof?.prof || null;
+    const targetProf = targetBall?.components.pokeprof?.prof || null;
+    const beforeActor = actorProf?.hp;
+    const beforeTarget = targetProf?.hp;
+    const detail = applyTurnAction(action, actorProf, targetProf, TURN_RULES);
+    if (!detail) {
+      return false;
+    }
+    actorBall?.components.pokeprof?.notify(beforeActor);
+    targetBall?.components.pokeprof?.notify(beforeTarget);
+    this.el.emit(EVENTS.TURN_ACTION, detail, false);
+    return true;
+  },
+
+  /** Convidado (J2): o anfitrião avisou que o turno terminou. */
+  finishRemoteTurn() {
+    if (!this.resolving) {
+      return;
+    }
+    const { sides } = this.resolving;
+    finishTurn(sides);
+    sides.forEach((side) => side.ball.components.pokeprof?.changed());
+    this.resolving = null;
+    this.el.emit(EVENTS.TURN_RESOLVED, null, false);
+    this.changed();
+  },
+
+  /** Convidado (J2): o anfitrião anunciou o fim de jogo. */
+  applyRemoteGameOver(winner, loser = this.opponentOf(winner)) {
+    this.result = { winner, loser, wait: 0 };
+    this.el.emit(EVENTS.GAME_OVER, { winner, loser }, false);
     this.changed();
   },
 
@@ -240,7 +295,7 @@ AFRAME.registerSystem("battle", {
   },
 
   checkGameOver(loser) {
-    if (this.result || !loser) {
+    if (this.isGuest() || this.result || !loser) {
       return;
     }
     const profs = this.ballsOf(loser).map((ball) => ball.components.pokeprof.prof);
@@ -256,7 +311,7 @@ AFRAME.registerSystem("battle", {
 
   tick(time, delta) {
     const dt = Math.min(delta || 0, MAX_FRAME_MS);
-    if (this.resolving) {
+    if (this.resolving && !this.resolving.remote) {
       this.resolving.wait -= dt;
       while (this.resolving && this.resolving.wait <= 0) {
         const step = this.resolving.steps.shift();

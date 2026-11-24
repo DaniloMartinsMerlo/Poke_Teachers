@@ -59,31 +59,11 @@ Fim de partida: "Jogar de novo" (mesma sala, mesmos jogadores) e
   Antes de apresentar na faculdade: servidor TURN gratuito ou trocar o
   transporte (`src/net/`) por Supabase Realtime (porta 443), ou levar um
   roteador próprio.
-- [ ] **4. Sincronizar a batalha.**
-  - Já pronto (etapa 3): o sistema `network` repassa as mensagens do outro
-    aparelho como `NETWORK_MESSAGE` e envia com `network.send(msg)`;
-    `game-flow.role` diz se este aparelho é o anfitrião (`host`, J1) ou o
-    convidado (`guest`, J2).
-  - No anfitrião, componente `remote-player` no suporte do J2, no lugar
-    do `cpu-player`: recebe as escolhas do J2 e chama `battle.choose()`,
-    como a CPU faz.
-  - No J2: o rig começa do outro lado (`z = -7`, virado para +z), o HUD
-    usa `player: p2`; ele **não** resolve turnos — aplica o que chega.
-    Cada um se vê no próprio lado, sem espelhar coordenadas.
-  - Protocolo (mensagens pequenas, JSON, com versão):
-    ```
-    J2 → J1:  join, throw{ball, from, velocity}, choose{kind, id},
-              recall (trocar), playAgain, bye
-    J1 → J2:  welcome{versão}, released{player, ball, pos},
-              recalled{player, ball}, turnStarted, turnAction{...},
-              turnResolved, gameOver{winner}, reset, bye
-    ambos:    ping (detectar queda)
-    ```
-- [ ] **5. Sincronizar arremessos.** Cada um simula a própria bola; ao
-  soltar, envia `{bola, posição, velocidade}` e o outro reproduz com
-  `physics-body.launch()` (já usado pela CPU). Quem decide se o PokeProf
-  saiu (e onde) é o anfitrião; o J2 ajusta a posição. Bola fora da
-  arena, bola barrada e recolher seguem o anfitrião.
+- [ ] **5. Sincronizar arremessos (refino no headset).** A reprodução com
+  `physics-body.launch()` e a autoridade do anfitrião sobre soltura,
+  bloqueio, recolher e retorno já estão ligadas no `remote-player`; falta
+  validar no Quest se a trajetória visual da bola em voo fica fluida ou
+  precisa de ajuste fino.
 - [ ] **6. Testes de rede.** Domínio: protocolo (montar/ler mensagens,
   versão errada), código da sala. e2e: duas cenas ligadas por um
   **transporte falso em memória** (sem PeerJS nem internet), partida
@@ -161,6 +141,9 @@ Detalhes de cada uma em `docs/HISTORICO.md`.
   funciona no roteador de casa; a rede da faculdade bloqueia P2P.
 - [x] Etapa 3 dos 2 jogadores: criar sala (código de 4 dígitos), entrar
   com teclado numérico 3D, erros, aviso quando o outro sai.
+- [x] Etapa 4 dos 2 jogadores: sincronização da batalha P2P (`remote-player`,
+  J2 em `z = -7` com HUD `p2`, anfitrião autoritativo para soltura,
+  turnos, fim de jogo e jogar de novo).
 
 ### Validadas no Quest 3
 

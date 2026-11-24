@@ -42,6 +42,8 @@ export const EVENTS = Object.freeze({
   BALL_LANDED: "balllanded",
   // Pokébola saiu do chão: foi pega ou resetada.
   BALL_TAKEOFF: "balltakeoff",
+  // Pokébola arremessada pela mão (detail: player, ball, from, velocity).
+  BALL_THROWN: "ballthrown",
   // Um objeto acabou de ser solto (sobe da bola até a cena).
   GRAB_RELEASED: "grabreleased",
   // Batalha (detail.player = id do jogador, detail.ball = pokébola).

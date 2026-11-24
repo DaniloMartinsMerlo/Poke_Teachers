@@ -10,7 +10,7 @@ import {
   SLEEP_SPEED_LIMIT,
   SLEEP_TIME_LIMIT,
 } from "../../config/physics.js";
-import { EVENTS } from "../../config/constants.js";
+import { EVENTS, RETURNING_ATTRIBUTE } from "../../config/constants.js";
 import { isLandingNormal } from "../../domain/landing.js";
 import { isHeld } from "../interaction/grab-state.js";
 import { whenSceneLoaded } from "../../utils/entity.js";
@@ -120,12 +120,13 @@ AFRAME.registerComponent("physics-body", {
   },
 
   /**
-   * Arremesso sem mão (CPU): sai de `position` (mundo) com `velocity`.
+   * Arremesso sem mão (CPU / rede): sai de `position` (mundo) com `velocity`.
    */
   launch(position, velocity) {
     if (isHeld(this.el)) {
       return;
     }
+    this.el.removeAttribute(RETURNING_ATTRIBUTE);
     this.scripted = false;
     this.snapped = false;
     this.wasHeld = false;
@@ -138,6 +139,28 @@ AFRAME.registerComponent("physics-body", {
     this.body.velocity.set(velocity.x, velocity.y, velocity.z);
     this.body.angularVelocity.set(0, 0, 0);
     this.body.wakeUp();
+  },
+
+  /**
+   * Põe a bola pousada e parada em `position` (sincronização de rede):
+   * continua contando como pousada no chão para recolher se alguém pegar.
+   */
+  settleAt(position, surface = "ground") {
+    this.el.removeAttribute(RETURNING_ATTRIBUTE);
+    this.scripted = false;
+    this.snapped = false;
+    this.wasHeld = false;
+    this.pendingImpulse.set(0, 0, 0);
+    this.el.object3D.position.set(position.x, position.y, position.z);
+    this.body.type = CANNON.Body.DYNAMIC;
+    this.body.collisionResponse = true;
+    this.syncBodyToEntity();
+    this.stop();
+    this.landed = true;
+    this.landedOn = surface;
+    this.body.linearDamping = LANDED_LINEAR_DAMPING;
+    this.body.angularDamping = LANDED_ANGULAR_DAMPING;
+    this.body.sleep();
   },
 
   // Caiu em cima de algo: corta o rolamento para a bola parar ali e
@@ -307,6 +330,12 @@ AFRAME.registerComponent("physics-body", {
     this.body.collisionResponse = true;
     this.body.velocity.set(velocity.x, velocity.y, velocity.z);
     this.body.wakeUp();
+    this.el.sceneEl.emit(EVENTS.BALL_THROWN, {
+      player: this.el.dataset.player,
+      ball: this.el,
+      from: { x: this.body.position.x, y: this.body.position.y, z: this.body.position.z },
+      velocity: { x: velocity.x, y: velocity.y, z: velocity.z },
+    }, false);
   },
 
   afterStep() {

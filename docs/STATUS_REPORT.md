@@ -1,6 +1,6 @@
 # Status Report — Poke Teachers VR
 
-Danilo · atualizado em 23/11/2026
+Danilo · atualizado em 24/11/2026
 
 ## Sobre o projeto
 
@@ -167,12 +167,35 @@ apagado.
   que a encaixava de volta ao soltar. Só descobri o último com um teste
   automatizado que media se a bola tinha saído do lugar.
 
+### 24/11 — Sincronização da batalha entre os 2 jogadores
+
+**Decisões:**
+
+- Coloquei o convidado (J2) de verdade do outro lado da arena (`z = -7`,
+  olhando para `+z`), com o HUD dele em vermelho, sem espelhar as coordenadas
+  do mundo: assim a posição de cada bola e de cada PokeProf é a mesma nos dois
+  aparelhos.
+- Mantive o anfitrião (J1) como única autoridade da partida: ele decide quando
+  o PokeProf sai da bola, sorteia os acertos, calcula o dano e avisa o J2, que
+  só aplica o resultado. No suporte do J2, um componente de jogador remoto faz
+  o papel que a CPU fazia no modo de 1 jogador.
+- Em "Jogar de novo", o pedido do J2 passa pelo anfitrião para que os dois
+  lados reiniciem juntos na mesma sala.
+
+**O que aprendi:**
+
+- Se cada aparelho resolvesse o turno por conta própria, um ataque com 65% de
+  precisão poderia acertar num lado e errar no outro. Mandar o resultado já
+  calculado pelo anfitrião elimina qualquer divergência de vida e de PP.
+- Ao posicionar uma pokébola no campo por mensagem de rede, ela precisa ficar
+  marcada como "pousada no chão" na física; senão, quando o jogador tenta
+  pegá-la de volta do campo para trocar de PokeProf, o jogo não percebe que ela
+  saiu do chão.
+
 ## Próximos passos
 
-1. Sincronizar a batalha entre os dois aparelhos: quem cria a sala calcula os
-   turnos e o outro só mostra o resultado; o J2 fica do outro lado do campo.
-2. Sincronizar os arremessos das pokébolas.
-3. Resolver a rede da faculdade (que bloqueia a conexão direta) antes da
+1. Validar a partida completa J1 x J2 entre PC e Quest 3 no roteador de casa.
+2. Resolver a rede da faculdade (que bloqueia a conexão direta) antes da
    apresentação.
-4. Validar no Quest 3 as salas, a tela inicial, a precisão e o PP, e a troca
-   gastando o turno.
+3. Validar no Quest 3 a tela inicial, a precisão e o PP, e a troca gastando o
+   turno.

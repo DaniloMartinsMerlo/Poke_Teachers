@@ -4,8 +4,14 @@
 // componente "cpu-player" no suporte do jogador).
 
 export const PLAYERS = Object.freeze({
-  p1: Object.freeze({ label: "J1", color: "#2f80ed", control: "human" }),
-  p2: Object.freeze({ label: "J2", color: "#e3350d", control: "cpu" }),
+  p1: Object.freeze({
+    label: "J1", color: "#2f80ed", control: "human",
+    spawn: Object.freeze({ x: 0, y: 0, z: 7, yaw: 0 }),
+  }),
+  p2: Object.freeze({
+    label: "J2", color: "#e3350d", control: "cpu",
+    spawn: Object.freeze({ x: 0, y: 0, z: -7, yaw: Math.PI }),
+  }),
 });
 
 export const PLAYER_IDS = Object.freeze(Object.keys(PLAYERS));

@@ -126,6 +126,58 @@ async function run() {
   out.guestJoinedCode = guestT.joinCode;
   guestT.emit("message", { v: 1, type: "hello", role: "host" }); await settle();
   out.guestMatch = [flow.mode, flow.opponent, flow.role, net.state];
+  const rigEl = document.querySelector("#camera-rig");
+  out.guestSpawn = [
+    +rigEl.object3D.position.z.toFixed(2),
+    +rigEl.object3D.rotation.y.toFixed(2),
+    hudEl.getAttribute("battle-hud").player,
+    hudEl.querySelector("a-text").getAttribute("value"),
+  ];
+  // Sincronização J1 x J2 (etapa 4): no convidado (J2), o anfitrião solta
+  // os PokeProfs, resolve o turno e anuncia o fim de jogo; no anfitrião
+  // (J1), o `remote-player` recebe as escolhas do J2.
+  const p1Balls = [...scene.querySelectorAll('[pokeprof][data-player="p1"]')];
+  const p2Balls = [...scene.querySelectorAll('[pokeprof][data-player="p2"]')];
+  out.guestBallsLocked = [
+    p1Balls.every((b) => b.hasAttribute("data-no-grab")),
+    p2Balls.every((b) => !b.hasAttribute("data-no-grab")),
+  ];
+  guestT.emit("message", { v: 1, type: "released", player: "p1", ball: 0, pos: { x: 0, y: 0.088, z: 4 } });
+  guestT.emit("message", { v: 1, type: "released", player: "p2", ball: 0, pos: { x: 0, y: 0.088, z: -4 } });
+  await settle();
+  out.guestBothReleased = [
+    Boolean(scene.systems.battle.activeBall("p1")),
+    Boolean(scene.systems.battle.activeBall("p2")),
+  ];
+  // J2 escolhe ataque no próprio HUD: envia `choose` ao J1, mas NÃO
+  // começa a resolver o turno sozinho.
+  const guestHudBtns = () => [...hudEl.querySelectorAll(".hud-button")];
+  guestHudBtns().find((b) => b.dataset.option === "attack").emit("click"); await frame();
+  guestHudBtns().find((b) => b.dataset.option === "chamada-oral").emit("click"); await frame();
+  out.guestSentChoose = guestT.sent.some((m) => m.type === "choose" && m.kind === "attack" && m.id === "chamada-oral");
+  out.guestWaitsHostTurn = !scene.systems.battle.isResolving();
+  // O anfitrião manda o turno: J2 aplica o dano sem sortear de novo.
+  guestT.emit("message", { v: 1, type: "turnStarted", order: ["p2", "p1"] }); await frame();
+  out.guestResolvingFromHost = scene.systems.battle.isResolving();
+  guestT.emit("message", {
+    v: 1, type: "turnAction", kind: "attack", player: "p2", target: "p1",
+    id: "chamada-oral", label: "Chamada Oral", actorName: "Rodinha", targetName: "Fabi",
+    damage: 25, missed: false, fainted: false, multiplier: 1.5, ppLeft: 14,
+  });
+  await frame();
+  out.guestAppliedHostAction = [
+    p1Balls[0].components.pokeprof.prof.hp,
+    p2Balls[0].components.pokeprof.prof.ppLeft({ id: "chamada-oral", pp: 15 }),
+  ];
+  guestT.emit("message", { v: 1, type: "turnResolved" }); await frame();
+  out.guestTurnResolved = !scene.systems.battle.isResolving();
+  guestT.emit("message", { v: 1, type: "gameOver", winner: "p2", loser: "p1" }); await frame();
+  out.guestGameOver = [hudEl.dataset.page, hudEl.querySelector(".hud-result")?.getAttribute("value")];
+  guestHudBtns().find((b) => b.dataset.option === "playagain").emit("click"); await frame();
+  out.guestSentPlayAgain = guestT.sent.some((m) => m.type === "playAgain");
+  guestT.emit("message", { v: 1, type: "reset" }); await settle();
+  out.guestResetFromHost = !scene.systems.battle.isGameOver()
+    && p1Balls[0].components.pokeprof.prof.hp === p1Balls[0].components.pokeprof.prof.maxHp();
   // Mensagens da partida (etapa 4) chegam como NETWORK_MESSAGE.
   let netMessage = null;
   scene.addEventListener("networkmessage", (e) => { netMessage = e.detail; }, { once: true });

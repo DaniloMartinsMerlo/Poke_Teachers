@@ -120,10 +120,10 @@ export function performAction(actor, target, rules, random = Math.random) {
     const multiplier = advantageMultiplier(attacker.type, defender.type, rules.typeBeats, rules.rules);
     const ppLeft = actor.prof.ppLeft(move);
     if (!rollHit(move.accuracy, random)) {
-      return { ...base, label: move.label, damage: 0, missed: true, fainted: false, multiplier, ppLeft };
+      return { ...base, id: move.id, label: move.label, damage: 0, missed: true, fainted: false, multiplier, ppLeft };
     }
     const damage = target.prof.takeDamage(calculateDamage(attacker, defender, move.power, rules.typeBeats, rules.rules));
-    return { ...base, label: move.label, damage, missed: false, fainted: target.prof.isFainted(), multiplier, ppLeft };
+    return { ...base, id: move.id, label: move.label, damage, missed: false, fainted: target.prof.isFainted(), multiplier, ppLeft };
   }
   if (choice.kind === ACTION_KINDS.POWERUP) {
     const powerup = rules.powerups.find((item) => item.id === choice.id);
@@ -132,10 +132,72 @@ export function performAction(actor, target, rules, random = Math.random) {
     }
     if (powerup.effect === "heal") {
       const healed = actor.prof.heal(actor.prof.maxHp() * powerup.percent / 100);
-      return { ...base, label: powerup.label, powerup, healed };
+      return { ...base, id: powerup.id, label: powerup.label, powerup, healed };
     }
     actor.prof.queueBoost(powerup);
-    return { ...base, label: powerup.label, powerup };
+    return { ...base, id: powerup.id, label: powerup.label, powerup };
+  }
+  return null;
+}
+
+/**
+ * Aplica no convidado (J2) uma ação de turno já calculada pelo anfitrião
+ * (J1), sem sortear nada: gasta o mesmo PP, aplica o mesmo dano/cura/boost
+ * e devolve o detalhe pronto para TURN_ACTION (balões e registro do HUD).
+ */
+export function applyTurnAction(action, actorProf, targetProf, rules) {
+  if (!action || !action.kind || !action.player || !action.target) {
+    return null;
+  }
+  const base = {
+    kind: action.kind,
+    player: action.player,
+    target: action.target,
+    actorName: action.actorName || actorProf?.name || "",
+    targetName: action.targetName || targetProf?.name || "",
+  };
+  if (action.kind === ACTION_KINDS.SWITCH) {
+    return { ...base, label: action.label || "Troca" };
+  }
+  if (action.kind === ACTION_KINDS.ATTACK) {
+    const move = rules.attacks.find((item) => item.id === action.id || item.label === action.label);
+    if (move && actorProf) {
+      actorProf.spendPp(move);
+    }
+    const missed = Boolean(action.missed);
+    const damage = missed ? 0 : Math.max(0, Number(action.damage) || 0);
+    if (!missed && targetProf && damage > 0) {
+      targetProf.takeDamage(damage);
+    }
+    return {
+      ...base,
+      id: move?.id || action.id,
+      label: action.label || move?.label || "",
+      damage,
+      missed,
+      fainted: targetProf ? targetProf.isFainted() : Boolean(action.fainted),
+      multiplier: Number(action.multiplier) || 1,
+      ppLeft: move && actorProf ? actorProf.ppLeft(move) : action.ppLeft,
+    };
+  }
+  if (action.kind === ACTION_KINDS.POWERUP) {
+    const powerup = rules.powerups.find(
+      (item) => item.id === (action.id || action.powerup?.id) || item.label === action.label,
+    ) || action.powerup;
+    if (!powerup) {
+      return null;
+    }
+    if (powerup.effect === "heal") {
+      const healed = Math.max(0, Number(action.healed) || 0);
+      if (actorProf && healed > 0) {
+        actorProf.heal(healed);
+      }
+      return { ...base, id: powerup.id, label: powerup.label, powerup, healed };
+    }
+    if (actorProf) {
+      actorProf.queueBoost(powerup);
+    }
+    return { ...base, id: powerup.id, label: powerup.label, powerup };
   }
   return null;
 }

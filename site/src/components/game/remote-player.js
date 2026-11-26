@@ -228,20 +228,26 @@ AFRAME.registerComponent("remote-player", {
   },
 
   // --------------------------------------------------- rede → cena local
+  // `applyingRemote` só vale no convidado (para não devolver ao anfitrião
+  // um evento que veio dele). No anfitrião, uma mensagem do J2 (`choose`,
+  // `recall`, `playAgain`) dispara eventos autoritativos (`TURN_STARTED`,
+  // `POKEMON_RECALLED`, `GAME_RESET`) que PRECISAM ser enviados ao J2.
   handleMessage(msg) {
     const flow = this.flow();
     if (!flow?.isOnline() || !isValidBattleMessage(msg)) {
       return;
     }
-    this.applyingRemote = true;
-    try {
-      if (flow.isHost()) {
-        this.applyOnHost(msg);
-      } else if (flow.isGuest()) {
+    if (flow.isHost()) {
+      this.applyOnHost(msg);
+      return;
+    }
+    if (flow.isGuest()) {
+      this.applyingRemote = true;
+      try {
         this.applyOnGuest(msg);
+      } finally {
+        this.applyingRemote = false;
       }
-    } finally {
-      this.applyingRemote = false;
     }
   },
 
@@ -260,7 +266,6 @@ AFRAME.registerComponent("remote-player", {
         return;
       case M.PLAY_AGAIN:
         this.el.sceneEl.emit(EVENTS.GAME_RESET, null, false);
-        this.send(buildResetMessage());
         return;
       default:
     }

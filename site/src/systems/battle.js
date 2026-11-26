@@ -231,6 +231,9 @@ AFRAME.registerSystem("battle", {
 
   /** Convidado (J2): aplica uma ação de turno recebida do anfitrião. */
   applyRemoteAction(action) {
+    if (!this.resolving) {
+      this.startRemoteTurn();
+    }
     const actorBall = this.activeBall(action.player);
     const targetBall = this.activeBall(action.target);
     const actorProf = actorBall?.components.pokeprof?.prof || null;
@@ -249,13 +252,13 @@ AFRAME.registerSystem("battle", {
 
   /** Convidado (J2): o anfitrião avisou que o turno terminou. */
   finishRemoteTurn() {
-    if (!this.resolving) {
-      return;
-    }
-    const { sides } = this.resolving;
+    const sides = this.resolving?.sides || PLAYER_IDS
+      .map((player) => ({ player, ball: this.activeBall(player), prof: this.activeProf(player)?.prof }))
+      .filter((side) => side.ball && side.prof);
     finishTurn(sides);
     sides.forEach((side) => side.ball.components.pokeprof?.changed());
     this.resolving = null;
+    this.choices.clear();
     this.el.emit(EVENTS.TURN_RESOLVED, null, false);
     this.changed();
   },

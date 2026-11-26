@@ -95,6 +95,18 @@ async function run() {
   hostT.emit("message", { v: 1, type: "hello", role: "guest" }); await settle();
   out.hostMatch = [flow.mode, flow.opponent, flow.role, net.state, menuEl.object3D.visible];
   out.cpuIdleInOnlineMatch = cpuEl.dataset.cpuState;
+  // Anfitrião (J1) escolhe primeiro e o convidado (J2) escolhe por último:
+  // o `choose` do J2 precisa disparar e enviar `turnStarted` ao J2 (sem
+  // engolir o evento por `applyingRemote`), senão o HUD do J2 fica travado.
+  const hostP1Ball = scene.querySelector('[pokeprof][data-player="p1"]');
+  const hostP2Ball = scene.querySelector('[pokeprof][data-player="p2"]');
+  hostP1Ball.components["pokemon-release"].releaseAt({ x: 0, y: 0.088, z: 4 });
+  hostP2Ball.components["pokemon-release"].releaseAt({ x: 0, y: 0.088, z: -4 });
+  await settle();
+  scene.systems.battle.choose("p1", { kind: "attack", id: "chamada-oral" });
+  hostT.emit("message", { v: 1, type: "choose", kind: "attack", id: "chamada-oral" });
+  await frame();
+  out.hostSentTurnStartedWhenGuestChoseSecond = hostT.sent.some((m) => m.type === "turnStarted");
   // O J2 sai: volta ao menu com o aviso.
   hostT.emit("closed"); await settle();
   out.lostBackToMenu = [flow.isMenu(), menuEl.dataset.screen, menuStatus(), net.state];

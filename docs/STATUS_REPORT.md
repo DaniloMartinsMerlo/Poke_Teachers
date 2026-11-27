@@ -1,6 +1,6 @@
 # Status Report — Poke Teachers VR
 
-Danilo · atualizado em 24/11/2026
+Danilo · atualizado em 27/11/2026
 
 ## Sobre o projeto
 
@@ -196,10 +196,73 @@ apagado.
   180° no navegador ou entrar como J2, apertar `W` andava para trás. Passei a
   calcular o passo do teclado pela direção real para onde a câmera olha.
 
+### 25/11 — Plano de testes de mecânicas e aceitação
+
+**Decisões:**
+
+- Estruturei o plano de testes em cinco frentes (batalha e jogabilidade,
+  interação e física, ambientação e interface, aceitação da plataforma com
+  usuários e partida online), cruzando o que já está coberto por testes
+  automatizados e simulação com o que precisa ser validado no Quest 3 e no PC.
+- Defini um protocolo de teste de aceitação com colegas (incluindo quem nunca
+  usou VR), deixando os primeiros minutos sem intervenção para medir o tempo
+  até o primeiro arremesso e aplicando um questionário curto de presença,
+  conforto, compreensão dos turnos e diversão ao final.
+- Registrei uma tabela consolidada dos defeitos já encontrados e corrigidos ao
+  longo do projeto para manter rastreabilidade do que motivou cada ajuste.
+
+**O que aprendi:**
+
+- Separar o que um teste automatizado garante (regras de dano, precisão, PP e
+  colisão) do que só o teste humano responde (conforto visual, enjoo, clareza
+  de quem é a vez e se o humor com os professores soa respeitoso) evita a falsa
+  sensação de que "testes passando" significa experiência pronta.
+
+### 26/11 — Moodboard e construção das personas dos professores
+
+**Decisões:**
+
+- Montei o moodboard do projeto apoiado em dois pilares: o sistema clássico de
+  batalha Pokémon adaptado para VR (arremesso físico e HUD que acompanha o
+  corpo) e as personas dos professores (Fabi como Grama equilibrada, Murilo
+  como Água tanque e Rodinha como Fogo rápido e forte).
+- Defini uma "receita de persona" para guiar a evolução visual e mecânica de
+  cada professor: o jeito de dar aula define o papel e os atributos, um traço
+  de personalidade inspira o golpe característico e os traços físicos guiam a
+  futura modelagem 3D do professor no lugar das criaturas genéricas atuais.
+- Documentei a paleta de cores da arena e da interface para manter contraste e
+  identidade visual consistente entre o campo, os cartões e o menu de batalha.
+
+**O que aprendi:**
+
+- Traduzir características reais dos professores e da rotina de sala de aula
+  ("Chamada Oral", "Prova Surpresa", "Feriado", "Cola Liberada") em regras do
+  jogo deixa as mecânicas intuitivas logo na primeira partida, porque o próprio
+  nome do golpe ou power-up já comunica o seu papel.
+
+### 27/11 — Ajustes finais e apresentação
+
+**Decisões:**
+
+- Corrigi dois problemas encontrados nos testes práticos antes da
+  apresentação: um travamento no modo de 2 jogadores quando o anfitrião
+  escolhia o ataque antes do convidado (o aviso de início de turno não era
+  enviado e prendia os menus) e a locomoção por teclado no navegador, que não
+  acompanhava o giro de 180° da câmera.
+- Organizei a demonstração da apresentação combinando a visão do projeto, o
+  moodboard das personas, o plano de testes e a partida ao vivo na arena.
+
+**O que aprendi:**
+
+- Testar a partida real entre dois aparelhos antes de apresentar revelou um bug
+  de ordem de escolha que só aparecia metade das vezes (quando o J1 clicava
+  antes do J2) e que passaria despercebido num teste sempre na mesma sequência.
+
 ## Próximos passos
 
-1. Validar a partida completa J1 x J2 entre PC e Quest 3 no roteador de casa.
-2. Resolver a rede da faculdade (que bloqueia a conexão direta) antes da
-   apresentação.
-3. Validar no Quest 3 a tela inicial, a precisão e o PP, e a troca gastando o
-   turno.
+1. Aplicar a rodada de testes de aceitação no Quest 3 com alunos e coletar as
+   respostas do questionário (imersão, conforto e compreensão dos turnos).
+2. Substituir as criaturas genéricas pelas modelagens 3D dos professores
+   seguindo as personas definidas no moodboard.
+3. Implementar o plano B de conexão (servidor TURN ou canal via HTTPS) para
+   partidas J1 x J2 em redes que bloqueiam P2P direto.

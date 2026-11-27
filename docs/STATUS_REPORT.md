@@ -191,6 +191,10 @@ apagado.
   marcada como "pousada no chão" na física; senão, quando o jogador tenta
   pegá-la de volta do campo para trocar de PokeProf, o jogo não percebe que ela
   saiu do chão.
+- O movimento por teclado padrão do A-Frame usa a rotação da entidade do
+  jogador, e não a da câmera filha que gira com o mouse: por isso, ao virar
+  180° no navegador ou entrar como J2, apertar `W` andava para trás. Passei a
+  calcular o passo do teclado pela direção real para onde a câmera olha.
 
 ## Próximos passos
 

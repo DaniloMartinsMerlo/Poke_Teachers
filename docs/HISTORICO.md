@@ -636,6 +636,13 @@ professores.
 - **`settleAt` ao pousar bola remota:** mantém `landedOn = "ground"` para
   que pegar a bola do campo depois continue disparando `BALL_TAKEOFF` e
   recolhendo o PokeProf.
+- **WASD no navegador segue o olhar da câmera (`vertical-controls`):** o
+  `wasd-controls` padrão do A-Frame no `#camera-rig` lia só o atributo
+  `rotation` do rig e ignorava o giro da câmera filha (`look-controls`) e
+  o `rotation.y = π` do J2, fazendo o `W` andar para trás ao girar a visão
+  em 180°. O movimento por teclado (WASD/setas) passou a usar
+  `camera.getWorldDirection()` projetado no chão e `player-rig.translate()`,
+  igual ao analógico do controle.
 
 ### Pendências
 - Validar partida completa PC x Quest 3 em casa (arremesso, turnos, troca,

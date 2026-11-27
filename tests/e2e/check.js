@@ -416,6 +416,17 @@ async function run() {
   out.hudRecenteredAfterBodyTurn = hudDir.dot(backDir) > 0.5;
   look.yawObject.rotation.y = 0;
   for (let i = 0; i < 160; i++) await frame();
+  // Teclado (W): segue para onde a câmera olha (girando 180° com o mouse,
+  // apertar W anda para +z, e não para trás em -z).
+  const zBeforeW = rig.object3D.position.z;
+  look.yawObject.rotation.y = Math.PI;
+  window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyW" }));
+  for (let i = 0; i < 10; i++) await frame();
+  window.dispatchEvent(new KeyboardEvent("keyup", { code: "KeyW" }));
+  out.wasdFollowsCameraLook = rig.object3D.position.z > zBeforeW + 0.2;
+  rig.object3D.position.z = zBeforeW;
+  look.yawObject.rotation.y = 0;
+  await frame();
   out.hudPointableByMouse = cursor.components.raycaster.objects.some((o) => o.el?.classList.contains("hud-button"));
   await press("attack");
   out.hudAttackPage = [hud.dataset.page, hudButtons().length];

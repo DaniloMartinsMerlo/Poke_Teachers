@@ -24,6 +24,11 @@ AFRAME.registerComponent("player-rig", {
     }
     this.el.object3D.position.set(spawn.x, spawn.y, spawn.z);
     this.el.object3D.rotation.set(0, spawn.yaw, 0);
+    const look = this.el.sceneEl.camera?.el?.components["look-controls"];
+    if (look?.yawObject && look?.pitchObject) {
+      look.yawObject.rotation.y = 0;
+      look.pitchObject.rotation.x = 0;
+    }
     this.el.object3D.updateMatrixWorld(true);
     const collision = this.el.components["player-collision"];
     if (collision) {
